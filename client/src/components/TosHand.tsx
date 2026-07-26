@@ -44,22 +44,21 @@ export function TosHand({ gameState, isMyTurn, onPlay }: TosHandProps) {
           onClick={() => setPrivacyHidden((v) => !v)}
           className="text-xl leading-none w-9 h-9 rounded-full bg-black/30 hover:bg-black/40 flex items-center justify-center"
         >
-          {privacyHidden ? "🙈" : "👁️"}
+          {privacyHidden ? "👁️" : "🙈"}
         </button>
       </div>
 
-      {/* One row per suit — scroll VERTICALLY between suits (swipe up/down).
-          Cards stay separated so each one remains fully visible. */}
-      <div className="w-full max-h-[230px] overflow-y-auto overflow-x-hidden bg-black/15 rounded-xl p-2 flex flex-col gap-2">
+      {/* One row per suit; cards wrap so every card stays fully visible. */}
+      <div className="w-full bg-black/15 rounded-xl p-2 flex flex-col gap-2">
         {groups.map(({ suit, cards }) => (
-          <div key={suit} className="flex items-center overflow-x-auto py-1 px-1">
-            {cards.map((card, i) => {
+          <div key={suit} className="flex flex-wrap items-center gap-2 py-1 px-1">
+            {cards.map((card) => {
               const legal = isLikelyLegal(card, hand, leadSuit);
               const shadowed = !canPlay || !legal;
               return (
                 <div
                   key={`${card.suit}-${card.rank}`}
-                  className={i === 0 ? "flex-shrink-0" : "flex-shrink-0 ml-2"}
+                  className="flex-shrink-0"
                 >
                   {privacyHidden ? (
                     <Card card={card} size="sm" faceDown />

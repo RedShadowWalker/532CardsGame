@@ -26,17 +26,17 @@ describe("Home", () => {
     await waitFor(() => expect(onCreateRoom).toHaveBeenCalledWith("Bob"));
   });
 
-  it("switches to join mode and calls onJoinRoom with the uppercased room code", async () => {
+  it("switches to join mode and calls onJoinRoom with the numeric room code", async () => {
     const onCreateRoom = vi.fn().mockResolvedValue(undefined);
     const onJoinRoom = vi.fn().mockResolvedValue(undefined);
     render(<Home onCreateRoom={onCreateRoom} onJoinRoom={onJoinRoom} />);
 
     await userEvent.type(screen.getByPlaceholderText("Alice"), "Carol");
     await userEvent.click(screen.getByRole("button", { name: /join with a room code/i }));
-    await userEvent.type(screen.getByPlaceholderText("ABCD12"), "abcd12");
+    await userEvent.type(screen.getByPlaceholderText("123456"), "ab12cd34");
     await userEvent.click(screen.getByRole("button", { name: /^join room$/i }));
 
-    await waitFor(() => expect(onJoinRoom).toHaveBeenCalledWith("ABCD12", "Carol"));
+    await waitFor(() => expect(onJoinRoom).toHaveBeenCalledWith("1234", "Carol"));
   });
 
   it("surfaces an error message when the join call rejects", async () => {
@@ -46,7 +46,7 @@ describe("Home", () => {
 
     await userEvent.type(screen.getByPlaceholderText("Alice"), "Dave");
     await userEvent.click(screen.getByRole("button", { name: /join with a room code/i }));
-    await userEvent.type(screen.getByPlaceholderText("ABCD12"), "FULL01");
+    await userEvent.type(screen.getByPlaceholderText("123456"), "FULL01");
     await userEvent.click(screen.getByRole("button", { name: /^join room$/i }));
 
     expect(await screen.findByText(/room is full/i)).toBeInTheDocument();

@@ -9,11 +9,12 @@ function createRoomWith532(rooms: RoomManager, hostName = "Alice") {
 }
 
 describe("RoomManager — room creation & game selection", () => {
-  it("creates a room with a 6-character code, the creator as host, and no game chosen yet", () => {
+  it("creates a room with a 6-digit code, the creator as host, and no game chosen yet", () => {
     const rooms = new RoomManager();
     const { room, player } = rooms.createRoom("Alice");
 
     expect(room.code).toHaveLength(6);
+    expect(room.code).toMatch(/^\d{6}$/);
     expect(room.hostId).toBe(player.id);
     expect(room.players).toHaveLength(1);
     expect(room.status).toBe("LOBBY");

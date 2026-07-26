@@ -37,6 +37,7 @@ export function SelectGame({ roomCode, onSelectGame, onLeaveRoom }: SelectGamePr
   const [matchLength, setMatchLength] = useState<number>(7);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const option = GAME_OPTIONS.find((o) => o.gameType === selected);
 
@@ -53,9 +54,37 @@ export function SelectGame({ roomCode, onSelectGame, onLeaveRoom }: SelectGamePr
     }
   }
 
+  async function copyRoomCode() {
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 text-white">
-      <h1 className="text-2xl font-bold mb-1">Room {roomCode}</h1>
+      <div className="mb-1 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={copyRoomCode}
+          className="group relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-black/30 shadow-md transition-transform hover:-translate-y-0.5 hover:border-white/30"
+          aria-label="Copy room code"
+          title="Copy room code"
+        >
+          <div className="absolute left-2 top-2 h-5 w-4 -rotate-12 rounded-md border border-white/50 bg-white/95" />
+          <div className="absolute left-4 top-3 h-5 w-4 rotate-3 rounded-md border border-white/70 bg-white/90" />
+          <div className="absolute left-6 top-4 h-5 w-4 rotate-12 rounded-md border border-amber-200 bg-amber-100" />
+          <span className="sr-only">Copy room code</span>
+        </button>
+        <div className="text-left">
+          <h1 className="text-2xl font-black tracking-wider uppercase leading-none">Room {roomCode}</h1>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-white/45 mt-1">Tap the cards to copy</p>
+        </div>
+      </div>
+      {copied && <p className="mb-4 text-xs text-emerald-300">Room code copied.</p>}
       <p className="text-white/60 mb-6 text-sm text-center max-w-sm">
         Choose a game before sharing your room code — the number of seats depends on which one you pick.
       </p>

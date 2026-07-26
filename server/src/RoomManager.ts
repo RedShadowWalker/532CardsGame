@@ -17,7 +17,7 @@ import { PlayerId as Player532Id } from "./game/types";
 import { ThreeOfSpadesEngine } from "./gameToS/ThreeOfSpadesEngine";
 import { GAME_CATALOG, GameType, MatchLength, MATCH_LENGTHS } from "./games";
 
-const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easier to read aloud
+const ROOM_CODE_CHARS = "0123456789";
 const ROOM_CODE_LENGTH = 6;
 
 export type PlayerId = Player532Id;

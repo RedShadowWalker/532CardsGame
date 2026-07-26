@@ -40,25 +40,6 @@ export function TosTable({
 
   return (
     <div className="w-full flex flex-col items-center gap-2">
-      {gameState.trumpSuit && (
-        <div className="flex items-center gap-2 bg-black/40 rounded-full px-4 py-1.5 shadow-md">
-          <span
-            className={`text-2xl leading-none ${
-              gameState.trumpSuit === "Hearts" || gameState.trumpSuit === "Diamonds" ? "text-red-500" : "text-white"
-            }`}
-          >
-            {SUIT_SYMBOL[gameState.trumpSuit]}
-          </span>
-          <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Hukum</span>
-          {gameState.partnerCard && (
-            <span className="text-white/50 text-[10px] ml-1">
-              Partner: {gameState.partnerCard.rank}
-              {SUIT_SYMBOL[gameState.partnerCard.suit]} {gameState.partnerRevealed ? "(revealed)" : "(hidden)"}
-            </span>
-          )}
-        </div>
-      )}
-
       <div className="relative w-[min(88vw,360px)] h-[min(88vw,360px)] flex-shrink-0 rounded-2xl bg-black/10 shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]">
         {seatOrder.map((playerId, seatIdx) => {
           const isTurn = gameState.currentTurnPlayerId === playerId;
@@ -96,12 +77,38 @@ export function TosTable({
           );
         })}
 
-        <div className="absolute inset-0 flex items-center justify-center gap-1">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          {gameState.trumpSuit && (
+            <div className="flex items-center gap-2 bg-black/50 rounded-full px-4 py-2 shadow-md backdrop-blur-sm">
+              <span
+                className={`text-2xl leading-none ${
+                  gameState.trumpSuit === "Hearts" || gameState.trumpSuit === "Diamonds"
+                    ? "text-red-500"
+                    : "text-white"
+                }`}
+              >
+                {SUIT_SYMBOL[gameState.trumpSuit]}
+              </span>
+              <span className="text-white/80 text-xs font-bold uppercase tracking-[0.22em]">
+                Hukum · {gameState.trumpSuit}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-1">
           {trickToShow.map((pc) => (
             <div key={pc.playerId} className="animate-pop-in">
               <Card card={pc.card} size="sm" />
             </div>
           ))}
+          </div>
+
+          {gameState.trumpSuit && gameState.partnerCard && (
+            <span className="text-[10px] text-white/60">
+              Partner: {gameState.partnerCard.rank}
+              {SUIT_SYMBOL[gameState.partnerCard.suit]} {gameState.partnerRevealed ? "(revealed)" : "(hidden)"}
+            </span>
+          )}
         </div>
 
         {announceWinnerId && (
