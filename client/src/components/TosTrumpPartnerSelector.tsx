@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { SuitDTO, TosRankDTO } from "../shared/socketEvents";
+import type { SuitDTO, TosCardDTO, TosRankDTO } from "../shared/socketEvents";
+import { Card } from "./Card";
 
 const SUITS: { suit: SuitDTO; symbol: string; red: boolean }[] = [
   { suit: "Spades", symbol: "♠", red: false },
@@ -8,28 +9,46 @@ const SUITS: { suit: SuitDTO; symbol: string; red: boolean }[] = [
   { suit: "Diamonds", symbol: "♦", red: true },
 ];
 
-const RANKS: TosRankDTO[] = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"];
+const SUIT_ORDER: SuitDTO[] = ["Spades", "Hearts", "Clubs", "Diamonds"];
+const RANK_ORDER: TosRankDTO[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+
+/** Every card in the deck, high to low within each suit, as candidate partner-card choices. */
+function allCandidateCards(): TosCardDTO[] {
+  const cards: TosCardDTO[] = [];
+  for (const suit of SUIT_ORDER) {
+    for (let i = RANK_ORDER.length - 1; i >= 0; i--) {
+      cards.push({ suit, rank: RANK_ORDER[i], value: i });
+    }
+  }
+  return cards;
+}
 
 interface TosTrumpPartnerSelectorProps {
   bidAmount: number | null;
+  /** The declarer's own hand — excluded from the partner-card choices below, since you can't call your own card. */
+  myHand: TosCardDTO[];
   onChoose: (suit: SuitDTO, partnerCard: { suit: SuitDTO; rank: TosRankDTO }) => Promise<unknown>;
 }
 
-export function TosTrumpPartnerSelector({ bidAmount, onChoose }: TosTrumpPartnerSelectorProps) {
+export function TosTrumpPartnerSelector({ bidAmount, myHand, onChoose }: TosTrumpPartnerSelectorProps) {
   const [suit, setSuit] = useState<SuitDTO | null>(null);
-  const [partnerSuit, setPartnerSuit] = useState<SuitDTO | null>(null);
-  const [partnerRank, setPartnerRank] = useState<TosRankDTO | null>(null);
+  const [partnerCard, setPartnerCard] = useState<TosCardDTO | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canConfirm = suit && partnerSuit && partnerRank;
+  const canConfirm = suit && partnerCard;
+
+  // Only cards NOT in your own hand can be called as the partner card —
+  // otherwise you could name a card you already hold, which is nonsensical.
+  const myHandIds = new Set(myHand.map((c) => `${c.suit}-${c.rank}`));
+  const candidates = allCandidateCards().filter((c) => !myHandIds.has(`${c.suit}-${c.rank}`));
 
   async function confirm() {
-    if (!suit || !partnerSuit || !partnerRank) return;
+    if (!suit || !partnerCard) return;
     setBusy(true);
     setError(null);
     try {
-      await onChoose(suit, { suit: partnerSuit, rank: partnerRank });
+      await onChoose(suit, { suit: partnerCard.suit, rank: partnerCard.rank });
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -37,7 +56,7 @@ export function TosTrumpPartnerSelector({ bidAmount, onChoose }: TosTrumpPartner
   }
 
   return (
-    <div className="bg-black/30 rounded-lg p-4 text-white w-full max-w-md text-center">
+    <div className="bg-black/30 rounded-lg p-4 text-white w-full max-w-lg text-center">
       <p className="font-semibold mb-3">You won the bid at {bidAmount} — declare Hukum and a partner card</p>
 
       <p className="text-xs text-white/60 mb-1">Hukum suit</p>
@@ -59,41 +78,26 @@ export function TosTrumpPartnerSelector({ bidAmount, onChoose }: TosTrumpPartner
         ))}
       </div>
 
-      <p className="text-xs text-white/60 mb-1">
+      <p className="text-xs text-white/60 mb-2">
         Partner card — whoever holds this becomes your hidden teammate (nobody, including you, will know who until
-        it's played)
+        it's played). Your own cards aren't shown here since you can't call a card you already hold.
       </p>
-      <div className="flex justify-center gap-2 mb-2">
-        {SUITS.map(({ suit: s, symbol, red }) => (
-          <button
-            key={s}
-            disabled={busy}
-            onClick={() => setPartnerSuit(s)}
-            className={[
-              "w-10 h-10 rounded-md shadow flex items-center justify-center text-lg font-bold",
-              partnerSuit === s ? "ring-2 ring-emerald-400" : "",
-              "bg-white",
-              red ? "text-red-600" : "text-slate-900",
-            ].join(" ")}
-          >
-            {symbol}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap justify-center gap-1 mb-4">
-        {RANKS.map((r) => (
-          <button
-            key={r}
-            disabled={busy}
-            onClick={() => setPartnerRank(r)}
-            className={[
-              "w-9 h-9 rounded-md text-sm font-semibold",
-              partnerRank === r ? "bg-emerald-600" : "bg-white/10 hover:bg-white/20",
-            ].join(" ")}
-          >
-            {r}
-          </button>
-        ))}
+      <div className="max-h-56 overflow-y-auto bg-black/20 rounded-lg p-2 mb-4">
+        <div className="flex flex-wrap justify-center gap-1">
+          {candidates.map((c) => {
+            const isSelected = partnerCard?.suit === c.suit && partnerCard?.rank === c.rank;
+            return (
+              <Card
+                key={`${c.suit}-${c.rank}`}
+                card={c}
+                size="sm"
+                selectable={!busy}
+                dimmed={!!partnerCard && !isSelected}
+                onClick={() => setPartnerCard(c)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       <button

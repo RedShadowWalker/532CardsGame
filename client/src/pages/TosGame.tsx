@@ -156,8 +156,11 @@ export function TosGame({
 
           {gameState.phase === "TRUMP_AND_PARTNER_SELECTION" &&
             (isDeclarer ? (
-              <TosTrumpPartnerSelector bidAmount={gameState.bidAmount} onChoose={onChooseTrumpAndPartner} />
-            ) : (
+<TosTrumpPartnerSelector
+  bidAmount={gameState.bidAmount}
+  myHand={gameState.hand ?? []}
+  onChoose={onChooseTrumpAndPartner}
+/>            ) : (
               <p className="text-white/70 text-sm">
                 Waiting for {playerNames[gameState.declarerId ?? ""] ?? "the declarer"} to declare Hukum and a
                 partner…

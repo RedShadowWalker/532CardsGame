@@ -8,7 +8,7 @@ function sortHand(hand: CardDTO[]): CardDTO[] {
   return [...hand].sort((a, b) => {
     const suitDiff = SUIT_ORDER.indexOf(a.suit) - SUIT_ORDER.indexOf(b.suit);
     if (suitDiff !== 0) return suitDiff;
-    return RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank);
+    return RANK_ORDER.indexOf(b.rank) - RANK_ORDER.indexOf(a.rank); // high to low within suit
   });
 }
 
