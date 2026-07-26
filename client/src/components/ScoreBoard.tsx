@@ -1,4 +1,5 @@
 import type { GameStateDTO } from "../shared/socketEvents";
+import { PlayerAvatar } from "./PlayerAvatar";
 
 interface ScoreBoardProps {
   gameState: GameStateDTO;
@@ -36,44 +37,43 @@ function LedgerList({
   );
 }
 
-export function ScoreBoard({ gameState, playerNames }: ScoreBoardProps) {
+function ScoreBoardBody({ gameState, playerNames }: ScoreBoardProps) {
   return (
-    <div className="bg-black/30 rounded-lg p-3 text-white text-sm w-full max-w-xs">
-      <h3 className="font-semibold mb-2 text-white/80">Round {gameState.round}</h3>
+    <div className="space-y-2">
+      {gameState.players.map((playerId) => {
+        const target = gameState.targets[playerId] ?? 0;
+        const won = gameState.tricksWon[playerId] ?? 0;
+        const isTrump = playerId === gameState.trumpPlayerId;
+        const name = playerNames[playerId] ?? playerId;
+        return (
+          <div
+            key={playerId}
+            className={[
+              "flex items-center gap-3 rounded-lg px-3 py-2",
+              isTrump ? "bg-amber-600/20 ring-1 ring-amber-400/40" : "bg-white/5",
+            ].join(" ")}
+          >
+            <PlayerAvatar playerId={playerId} name={name} size="sm" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                {name}
+                {isTrump ? <span className="text-amber-300 text-xs ml-1">Hukum</span> : null}
+              </p>
+              <p className="text-[11px] text-white/50">Target {target}</p>
+            </div>
+            <p className="text-lg font-bold text-white tabular-nums">{won}</p>
+          </div>
+        );
+      })}
 
-      <table className="w-full text-left mb-3">
-        <thead>
-          <tr className="text-white/50 text-xs">
-            <th className="pb-1">Player</th>
-            <th className="pb-1 text-right">Target</th>
-            <th className="pb-1 text-right">Won</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gameState.players.map((playerId) => {
-            const target = gameState.targets[playerId] ?? 0;
-            const won = gameState.tricksWon[playerId] ?? 0;
-            const isTrump = playerId === gameState.trumpPlayerId;
-            return (
-              <tr key={playerId} className={isTrump ? "text-yellow-300" : ""}>
-                <td className="py-0.5">
-                  {playerNames[playerId] ?? playerId}
-                  {isTrump && " (Hukum)"}
-                </td>
-                <td className="py-0.5 text-right">{target}</td>
-                <td className="py-0.5 text-right font-semibold">{won}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <h4 className="font-semibold mb-1 text-white/80 text-xs">Hand ledger</h4>
-      <LedgerList ledger={gameState.ledger} playerNames={playerNames} />
+      <div className="pt-1">
+        <h4 className="font-semibold mb-1 text-white/70 text-[11px] uppercase tracking-wide">Hand ledger</h4>
+        <LedgerList ledger={gameState.ledger} playerNames={playerNames} />
+      </div>
 
       {gameState.roundHistory.length > 0 && (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-white/60 text-xs">
+        <details className="pt-1">
+          <summary className="cursor-pointer text-white/50 text-[11px] uppercase tracking-wide">
             Round history ({gameState.roundHistory.length})
           </summary>
           <ul className="mt-2 space-y-1 text-xs text-white/70">
@@ -96,6 +96,28 @@ export function ScoreBoard({ gameState, playerNames }: ScoreBoardProps) {
           </ul>
         </details>
       )}
+    </div>
+  );
+}
+
+export function ScoreBoard(props: ScoreBoardProps) {
+  return (
+    <div className="w-full lg:w-72 flex-shrink-0">
+      {/* Mobile: collapsible drawer so it doesn't eat vertical space by
+          default. Desktop: always expanded, matching the sidebar layout. */}
+      <details className="lg:hidden bg-black/30 rounded-xl p-3 text-white text-sm" open={false}>
+        <summary className="cursor-pointer font-bold text-white/90">
+          Round {props.gameState.round} · Scoreboard
+        </summary>
+        <div className="mt-3">
+          <ScoreBoardBody {...props} />
+        </div>
+      </details>
+
+      <div className="hidden lg:block bg-black/30 rounded-xl p-3 text-white text-sm">
+        <h3 className="font-bold mb-2 text-white/90">Round {props.gameState.round}</h3>
+        <ScoreBoardBody {...props} />
+      </div>
     </div>
   );
 }

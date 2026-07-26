@@ -74,18 +74,20 @@ export function SettlementPanel({
         </p>
 
         <div className="flex flex-wrap justify-center gap-1 mb-3">
-          {candidates.map((c) => (
-            <Card
-              key={`${c.suit}-${c.rank}`}
-              card={c}
-              size="sm"
-              selectable
-              dimmed={
-                !!selectedReturnCard && !(selectedReturnCard.suit === c.suit && selectedReturnCard.rank === c.rank)
-              }
-              onClick={() => setSelectedReturnCard(c)}
-            />
-          ))}
+          {candidates.map((c) => {
+            const isSelected =
+              !!selectedReturnCard && selectedReturnCard.suit === c.suit && selectedReturnCard.rank === c.rank;
+            return (
+              <Card
+                key={`${c.suit}-${c.rank}`}
+                card={c}
+                size="sm"
+                selectable
+                selected={isSelected}
+                onClick={() => setSelectedReturnCard(c)}
+              />
+            );
+          })}
         </div>
 
         <div className="flex justify-center gap-2">

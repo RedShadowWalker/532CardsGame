@@ -72,7 +72,7 @@ export function Game({
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-3 py-6 text-white gap-4">
+    <div className="felt-table wood-frame min-h-screen flex flex-col items-center px-3 py-4 text-white gap-3">
       {/* Settlement is a hard gate before play resumes — shown as a blocking
           modal so it's impossible to miss and can't be dismissed until the
           debtor(s) actually resolve every pending item. */}
@@ -89,15 +89,18 @@ export function Game({
       )}
 
       <div className="flex items-center justify-between w-full max-w-4xl">
-        <h1 className="text-xl font-bold">5-3-2 — Round {gameState.round}</h1>
-        <button className="text-sm text-white/40 hover:text-white/70" onClick={onLeaveRoom}>
-          Leave room
+        <h1 className="text-2xl font-bold tracking-tight">5-3-2</h1>
+        <button
+          className="flex items-center gap-1 text-xs font-semibold text-red-300 border border-red-400/50 rounded-full px-3 py-1 hover:bg-red-500/10"
+          onClick={onLeaveRoom}
+        >
+          🚪 Leave Room
         </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
-        <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="relative w-full flex-shrink-0">
+        <div className="flex-1 flex flex-col items-center gap-4 w-full">
+          <div className="relative w-full flex flex-col items-center">
             <Table
               gameState={gameState}
               myPlayerId={myPlayerId}
@@ -119,10 +122,11 @@ export function Game({
             ))}
 
           {gameState.phase === "ROUND_COMPLETE" && (
-            <div className="bg-black/30 rounded-lg p-4 text-center">
-              <p className="mb-2">Round {gameState.round} complete!</p>
+            <div className="animate-banner-in bg-panel/90 border border-white/10 rounded-xl p-5 text-center shadow-xl">
+              <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Round Complete</p>
+              <p className="text-lg font-bold mb-3">Round {gameState.round}</p>
               <button
-                className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 font-semibold disabled:opacity-40"
+                className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-500 font-semibold disabled:opacity-40"
                 disabled={busy}
                 onClick={() => handleAdvance(onNextRound)}
               >

@@ -1,11 +1,95 @@
 @import "tailwindcss";
 
 @theme {
-  --color-felt: #0b5d3b;
-  --color-felt-dark: #08432a;
+  --color-felt: #0f5c3a;
+  --color-felt-dark: #0a3f28;
+  --color-panel: #0f172a;
+  --color-accent-blue: #2563eb;
+  --color-accent-gold: #fbbf24;
 }
 
 body {
-  background: linear-gradient(180deg, var(--color-felt) 0%, var(--color-felt-dark) 100%);
+  background: var(--color-felt-dark);
   min-height: 100vh;
+}
+
+/* The whole game screen reads as a felt table — radial center lighting,
+   vignette toward the edges — instead of a flat color with a disconnected
+   shape floating on top of it. */
+.felt-table {
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at center, var(--color-felt) 0%, var(--color-felt-dark) 100%);
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.55);
+}
+
+/* Wooden border frame around the whole viewport, evoking a real table edge. */
+.wood-frame {
+  border: 8px solid #6b4226;
+  border-image: linear-gradient(135deg, #8a5a2f, #4a2e13, #8a5a2f) 1;
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.35),
+    0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* Cards popping into the trick area, instead of appearing instantly. */
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 260ms ease-out;
+}
+
+/* "Your turn" — a calm green pulse. */
+@keyframes pulse-ring-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(34, 197, 94, 0);
+  }
+}
+.pulse-turn {
+  animation: pulse-ring-green 1.4s ease-in-out infinite;
+}
+
+/* Someone else's turn — a softer amber pulse ("thinking"). */
+@keyframes pulse-ring-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(251, 191, 36, 0);
+  }
+}
+.pulse-thinking {
+  animation: pulse-ring-amber 1.4s ease-in-out infinite;
+}
+
+/* Round-complete / leaderboard-reveal banners sliding/fading in. */
+@keyframes banner-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-banner-in {
+  animation: banner-in 220ms ease-out;
 }

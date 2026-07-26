@@ -15,6 +15,7 @@ import { TosTrumpPartnerSelector } from "../components/TosTrumpPartnerSelector";
 import { TosScoreBoard } from "../components/TosScoreBoard";
 import { TosLeaderboardModal } from "../components/TosLeaderboardModal";
 import { DealingOverlay } from "../components/DealingOverlay";
+import { PlayerAvatar } from "../components/PlayerAvatar";
 import { useTrickResolution } from "../hooks/useTrickResolution";
 
 interface TosGameProps {
@@ -61,7 +62,7 @@ export function TosGame({
   const isMyTurn = gameState.currentTurnPlayerId === myPlayerId;
   const isDeclarer = gameState.declarerId === myPlayerId;
 
-  // Holds each completed hand on screen for a few seconds (with a winner
+  // Holds each completed trick on screen for a few seconds (with a winner
   // banner) instead of it vanishing the instant the 4th card lands. Per-hand
   // point values are deliberately NOT shown here — captured points only
   // surface once the whole round is over (see TosScoreBoard).
@@ -93,12 +94,13 @@ export function TosGame({
       ? Object.entries(gameState.finalStandings).sort(([, a], [, b]) => b - a)
       : [];
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-white">
+      <div className="felt-table wood-frame min-h-screen flex flex-col items-center justify-center px-4 text-white">
         <h1 className="text-2xl font-bold mb-4">Match complete!</h1>
         <ul className="space-y-2 mb-6 w-full max-w-sm">
           {standings.map(([playerId, score], i) => (
-            <li key={playerId} className="flex items-center justify-between bg-black/30 rounded px-4 py-2">
-              <span>
+            <li key={playerId} className="flex items-center gap-3 bg-black/30 rounded-lg px-4 py-2">
+              <PlayerAvatar playerId={playerId} name={playerNames[playerId] ?? playerId} size="sm" />
+              <span className="flex-1">
                 {i === 0 && "🏆 "}
                 {playerNames[playerId] ?? playerId}
               </span>
@@ -106,7 +108,7 @@ export function TosGame({
             </li>
           ))}
         </ul>
-        <button className="px-5 py-2 rounded bg-emerald-600 hover:bg-emerald-500 font-semibold" onClick={onLeaveRoom}>
+        <button className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-500 font-semibold" onClick={onLeaveRoom}>
           Back to home
         </button>
       </div>
@@ -114,7 +116,7 @@ export function TosGame({
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-3 py-6 text-white gap-4">
+    <div className="felt-table wood-frame min-h-screen flex flex-col items-center px-3 py-4 text-white gap-3">
       {leaderboardReveal && (
         <TosLeaderboardModal
           reveal={leaderboardReveal}
@@ -124,15 +126,18 @@ export function TosGame({
       )}
 
       <div className="flex items-center justify-between w-full max-w-4xl">
-        <h1 className="text-xl font-bold">Three of Spades — Round {gameState.round}</h1>
-        <button className="text-sm text-white/40 hover:text-white/70" onClick={onLeaveRoom}>
-          Leave room
+        <h1 className="text-2xl font-bold tracking-tight">Three of Spades</h1>
+        <button
+          className="flex items-center gap-1 text-xs font-semibold text-red-300 border border-red-400/50 rounded-full px-3 py-1 hover:bg-red-500/10"
+          onClick={onLeaveRoom}
+        >
+          🚪 Leave Room
         </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
-        <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="relative w-full flex-shrink-0">
+        <div className="flex-1 flex flex-col items-center gap-4 w-full">
+          <div className="relative w-full flex flex-col items-center">
             <TosTable
               gameState={gameState}
               myPlayerId={myPlayerId}
@@ -156,11 +161,12 @@ export function TosGame({
 
           {gameState.phase === "TRUMP_AND_PARTNER_SELECTION" &&
             (isDeclarer ? (
-<TosTrumpPartnerSelector
-  bidAmount={gameState.bidAmount}
-  myHand={gameState.hand ?? []}
-  onChoose={onChooseTrumpAndPartner}
-/>            ) : (
+              <TosTrumpPartnerSelector
+                bidAmount={gameState.bidAmount}
+                myHand={gameState.hand ?? []}
+                onChoose={onChooseTrumpAndPartner}
+              />
+            ) : (
               <p className="text-white/70 text-sm">
                 Waiting for {playerNames[gameState.declarerId ?? ""] ?? "the declarer"} to declare Hukum and a
                 partner…
@@ -168,15 +174,15 @@ export function TosGame({
             ))}
 
           {gameState.phase === "ROUND_COMPLETE" && (
-            <div className="bg-black/30 rounded-lg p-4 text-center">
-              <p className="mb-2">
-                Round {gameState.round} complete —{" "}
+            <div className="animate-banner-in bg-panel/90 border border-white/10 rounded-xl p-5 text-center shadow-xl">
+              <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Round Complete</p>
+              <p className="text-lg font-bold mb-3">
                 {gameState.roundHistory[gameState.roundHistory.length - 1]?.contractSucceeded
-                  ? "contract made!"
-                  : "contract failed."}
+                  ? "Contract made!"
+                  : "Contract failed."}
               </p>
               <button
-                className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 font-semibold disabled:opacity-40"
+                className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-500 font-semibold disabled:opacity-40"
                 disabled={busy}
                 onClick={() => handleAdvance(onNextRound)}
               >

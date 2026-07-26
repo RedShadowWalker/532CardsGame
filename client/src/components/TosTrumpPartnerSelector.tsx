@@ -92,7 +92,7 @@ export function TosTrumpPartnerSelector({ bidAmount, myHand, onChoose }: TosTrum
                 card={c}
                 size="sm"
                 selectable={!busy}
-                dimmed={!!partnerCard && !isSelected}
+                selected={isSelected}
                 onClick={() => setPartnerCard(c)}
               />
             );

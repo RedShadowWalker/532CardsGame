@@ -1,5 +1,6 @@
 import type { GameStateDTO } from "../shared/socketEvents";
 import { Card } from "./Card";
+import { PlayerAvatar } from "./PlayerAvatar";
 import { TrickWinnerBanner } from "./TrickWinnerBanner";
 
 interface TableProps {
@@ -13,12 +14,13 @@ interface TableProps {
   showWinnerBanner?: boolean;
 }
 
-// Exactly 3 seats: me (bottom), left, right — matching a 3-sided,
-// triangular table, not a 4-sided one.
+const SUIT_SYMBOL: Record<string, string> = { Spades: "♠", Hearts: "♥", Diamonds: "♦", Clubs: "♣" };
+
+// Exactly 3 seats: me (bottom), left, right — a 3-sided table.
 const SEAT_POSITION_CLASSES = [
-  "bottom-0 left-1/2 -translate-x-1/2", // me
-  "top-1/4 left-0 -translate-x-1/4", // left
-  "top-1/4 right-0 translate-x-1/4", // right
+  "bottom-1 left-1/2 -translate-x-1/2", // me
+  "top-6 left-2", // left
+  "top-6 right-2", // right
 ];
 
 export function Table({
@@ -36,56 +38,67 @@ export function Table({
       : [...gameState.players.slice(myIndex), ...gameState.players.slice(0, myIndex)];
 
   const trickToShow = overrideTrick ?? gameState.currentTrick;
-  const cardByPlayer = new Map(trickToShow.map((pc) => [pc.playerId, pc.card]));
 
   return (
-<div className="relative mx-auto w-[min(90vw,380px)] h-[min(90vw,380px)] flex-shrink-0">      {/* Brown triangular table — 3-player game, 3-sided table. */}
-      <div
-        className="absolute inset-4 bg-amber-900/70 border-4 border-amber-950/60 shadow-inner"
-        style={{ clipPath: "polygon(50% 6%, 6% 94%, 94% 94%)" }}
-      />
-
-      {seatOrder.map((playerId, seatIdx) => {
-        const isTurn = gameState.currentTurnPlayerId === playerId;
-        const played = cardByPlayer.get(playerId);
-        const role =
-          playerId === gameState.trumpPlayerId
-            ? "Hukum"
-            : playerId === gameState.leftPlayerId
-              ? "Left"
-              : null;
-
-        return (
-          <div key={playerId} className={`absolute ${SEAT_POSITION_CLASSES[seatIdx]} flex flex-col items-center gap-1`}>
-            <div
-              className={[
-                "px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap",
-                isTurn ? "bg-yellow-400 text-black" : "bg-black/40 text-white",
-              ].join(" ")}
-            >
-              {playerNames[playerId] ?? "Player"}
-              {playerId === myPlayerId ? " (you)" : ""}
-              {role ? ` · ${role}` : ""}
-            </div>
-            <div className="h-20 flex items-center justify-center">
-              {played ? <Card card={played} size="md" /> : <div className="w-14 h-20" />}
-            </div>
-          </div>
-        );
-      })}
-
+    <div className="w-full flex flex-col items-center gap-2">
       {gameState.trumpSuit && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/70 text-sm font-semibold">
-          Hukum: {gameState.trumpSuit}
+        <div className="flex items-center gap-2 bg-black/40 rounded-full px-4 py-1.5 shadow-md">
+          <span
+            className={`text-2xl leading-none ${
+              gameState.trumpSuit === "Hearts" || gameState.trumpSuit === "Diamonds" ? "text-red-500" : "text-white"
+            }`}
+          >
+            {SUIT_SYMBOL[gameState.trumpSuit]}
+          </span>
+          <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Hukum</span>
         </div>
       )}
 
-      {announceWinnerId && (
-        <TrickWinnerBanner
-          winnerName={playerNames[announceWinnerId] ?? "Someone"}
-          visible={!!showWinnerBanner}
-        />
-      )}
+      <div className="relative w-[min(88vw,360px)] h-[min(88vw,360px)] flex-shrink-0 rounded-full bg-black/10 shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]">
+        {seatOrder.map((playerId, seatIdx) => {
+          const isTurn = gameState.currentTurnPlayerId === playerId;
+          const isMe = playerId === myPlayerId;
+          const role =
+            playerId === gameState.trumpPlayerId ? "Hukum" : playerId === gameState.leftPlayerId ? "Left" : null;
+          const name = playerNames[playerId] ?? "Player";
+
+          return (
+            <div key={playerId} className={`absolute ${SEAT_POSITION_CLASSES[seatIdx]} flex flex-col items-center gap-1 w-24`}>
+              <div className={`rounded-full ${isTurn ? (isMe ? "pulse-turn" : "pulse-thinking") : ""}`}>
+                <PlayerAvatar playerId={playerId} name={name} size="md" />
+              </div>
+              <div className="bg-black/50 rounded-lg px-2 py-1 text-center w-full">
+                <p className="text-xs font-semibold text-white truncate">
+                  {name}
+                  {isMe ? " (you)" : ""}
+                </p>
+                <p className="text-[10px] text-white/60">
+                  Won {gameState.tricksWon[playerId] ?? 0}
+                  {role ? ` · ${role}` : ""}
+                </p>
+                {isTurn && (
+                  <p className={`text-[10px] font-bold ${isMe ? "text-green-400" : "text-amber-400"}`}>
+                    {isMe ? "YOUR TURN" : "Thinking…"}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Played cards, center of the table. */}
+        <div className="absolute inset-0 flex items-center justify-center gap-1">
+          {trickToShow.map((pc) => (
+            <div key={pc.playerId} className="animate-pop-in">
+              <Card card={pc.card} size="sm" />
+            </div>
+          ))}
+        </div>
+
+        {announceWinnerId && (
+          <TrickWinnerBanner winnerName={playerNames[announceWinnerId] ?? "Someone"} visible={!!showWinnerBanner} />
+        )}
+      </div>
     </div>
   );
 }
