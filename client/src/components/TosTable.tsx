@@ -1,10 +1,14 @@
 import type { TosGameStateDTO } from "../shared/socketEvents";
 import { Card } from "./Card";
+import { TrickWinnerBanner } from "./TrickWinnerBanner";
 
 interface TosTableProps {
   gameState: TosGameStateDTO;
   myPlayerId: string;
   playerNames: Record<string, string>;
+  overrideTrick?: { playerId: string; card: TosGameStateDTO["currentTrick"][number]["card"] }[] | null;
+  announceWinnerId?: string | null;
+  showWinnerBanner?: boolean;
 }
 
 // 4 seats: me (bottom), left, across, right.
@@ -17,14 +21,22 @@ const SEAT_POSITION_CLASSES = [
 
 const SUIT_SYMBOL: Record<string, string> = { Spades: "♠", Hearts: "♥", Diamonds: "♦", Clubs: "♣" };
 
-export function TosTable({ gameState, myPlayerId, playerNames }: TosTableProps) {
+export function TosTable({
+  gameState,
+  myPlayerId,
+  playerNames,
+  overrideTrick,
+  announceWinnerId,
+  showWinnerBanner,
+}: TosTableProps) {
   const myIndex = gameState.players.indexOf(myPlayerId);
   const seatOrder =
     myIndex === -1
       ? gameState.players
       : [...gameState.players.slice(myIndex), ...gameState.players.slice(0, myIndex)];
 
-  const cardByPlayer = new Map(gameState.currentTrick.map((pc) => [pc.playerId, pc.card]));
+  const trickToShow = overrideTrick ?? gameState.currentTrick;
+  const cardByPlayer = new Map(trickToShow.map((pc) => [pc.playerId, pc.card]));
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md">
@@ -70,6 +82,13 @@ export function TosTable({ gameState, myPlayerId, playerNames }: TosTableProps) 
             </div>
           )}
         </div>
+      )}
+
+      {announceWinnerId && (
+        <TrickWinnerBanner
+          winnerName={playerNames[announceWinnerId] ?? "Someone"}
+          visible={!!showWinnerBanner}
+        />
       )}
     </div>
   );
