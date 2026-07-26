@@ -27,6 +27,9 @@ export function TosScoreBoard({ gameState, myPlayerId, playerNames, onRequestVot
 
   const voteStatus = gameState.pendingVoteStatus;
   const iHaveVoted = voteStatus ? voteStatus[myPlayerId] : false;
+  // Points are only revealed once the whole round is over — not trick by
+  // trick during play, which would give away too much too early.
+  const pointsRevealed = gameState.phase === "ROUND_COMPLETE" || gameState.phase === "MATCH_COMPLETE";
 
   return (
     <div className="bg-black/30 rounded-lg p-3 text-white text-sm w-full max-w-xs">
@@ -34,29 +37,35 @@ export function TosScoreBoard({ gameState, myPlayerId, playerNames, onRequestVot
         Round {gameState.round} of {gameState.matchLength}
       </h3>
 
-      <table className="w-full text-left mb-2">
-        <thead>
-          <tr className="text-white/50 text-xs">
-            <th className="pb-1">Player</th>
-            <th className="pb-1 text-right">Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gameState.players.map((playerId) => (
-            <tr
-              key={playerId}
-              className={
-                playerId === gameState.declarerId || (gameState.partnerRevealed && playerId === gameState.partnerId)
-                  ? "text-yellow-300"
-                  : ""
-              }
-            >
-              <td className="py-0.5">{playerNames[playerId] ?? playerId}</td>
-              <td className="py-0.5 text-right font-semibold">{gameState.capturedPoints[playerId] ?? 0}</td>
+      {pointsRevealed ? (
+        <table className="w-full text-left mb-2">
+          <thead>
+            <tr className="text-white/50 text-xs">
+              <th className="pb-1">Player</th>
+              <th className="pb-1 text-right">Points</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {gameState.players.map((playerId) => (
+              <tr
+                key={playerId}
+                className={
+                  playerId === gameState.declarerId || (gameState.partnerRevealed && playerId === gameState.partnerId)
+                    ? "text-yellow-300"
+                    : ""
+                }
+              >
+                <td className="py-0.5">{playerNames[playerId] ?? playerId}</td>
+                <td className="py-0.5 text-right font-semibold">{gameState.capturedPoints[playerId] ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-white/50 text-xs italic mb-2">
+          Points are tallied in secret and revealed once the round ends.
+        </p>
+      )}
 
       <p className="text-white/50 text-xs italic mb-2">
         Cumulative standings stay hidden — everyone has to agree to peek.

@@ -1,16 +1,18 @@
 import { useState } from "react";
-import type { CardDTO, GameStateDTO, RoomStateDTO, SuitDTO } from "../shared/socketEvents";
+import type { CardDTO, GameStateDTO, RoomStateDTO, SuitDTO, TrickResolvedPayload } from "../shared/socketEvents";
 import { Table } from "../components/Table";
 import { Hand } from "../components/Hand";
 import { TrumpSelector } from "../components/TrumpSelector";
 import { SettlementPanel } from "../components/SettlementPanel";
 import { ScoreBoard } from "../components/ScoreBoard";
 import { DealingOverlay } from "../components/DealingOverlay";
+import { useTrickResolution } from "../hooks/useTrickResolution";
 
 interface GameProps {
   gameState: GameStateDTO;
   roomState: RoomStateDTO;
   myPlayerId: string;
+  lastTrick: TrickResolvedPayload | null;
   onChooseTrump: (suit: SuitDTO) => Promise<unknown>;
   onSettleDebt: (creditorId: string, method: "card" | "carryForward") => Promise<unknown>;
   onRespondToSettlement: (action: "keep" | "reject", returnCard?: CardDTO) => Promise<unknown>;
@@ -19,10 +21,17 @@ interface GameProps {
   onLeaveRoom: () => void;
 }
 
+// Phases where the player already has cards in hand and should see them,
+// even though it's not their turn to play yet (they were dealt 5 cards
+// before trump is even chosen, and settlement also happens with a full
+// 10-card hand) — only PLAYING actually lets you click a card.
+const HAND_VISIBLE_PHASES = new Set(["TRUMP_SELECTION", "SETTLEMENT", "PLAYING"]);
+
 export function Game({
   gameState,
   roomState,
   myPlayerId,
+  lastTrick,
   onChooseTrump,
   onSettleDebt,
   onRespondToSettlement,
@@ -36,6 +45,10 @@ export function Game({
   const playerNames = Object.fromEntries(roomState.players.map((p) => [p.id, p.name]));
   const isMyTurn = gameState.currentTurnPlayerId === myPlayerId;
   const isTrumpPlayer = gameState.trumpPlayerId === myPlayerId;
+
+  // Holds the last completed trick on screen for a few seconds (with a
+  // winner banner) instead of it vanishing the instant the 4th card lands.
+  const { phase: trickPhase, activeTrick } = useTrickResolution(lastTrick);
 
   async function handlePlayCard(card: CardDTO) {
     setPlayError(null);
@@ -70,7 +83,14 @@ export function Game({
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
         <div className="flex-1 flex flex-col items-center gap-4">
           <div className="relative w-full">
-            <Table gameState={gameState} myPlayerId={myPlayerId} playerNames={playerNames} />
+            <Table
+              gameState={gameState}
+              myPlayerId={myPlayerId}
+              playerNames={playerNames}
+              overrideTrick={trickPhase !== "idle" ? activeTrick?.cards ?? null : null}
+              announceWinnerId={activeTrick?.winnerId ?? null}
+              showWinnerBanner={trickPhase === "announcing"}
+            />
             <DealingOverlay gameState={gameState} />
           </div>
 
@@ -106,7 +126,7 @@ export function Game({
             </div>
           )}
 
-          {gameState.phase === "PLAYING" && (
+          {HAND_VISIBLE_PHASES.has(gameState.phase) && (
             <Hand gameState={gameState} isMyTurn={isMyTurn} onPlay={handlePlayCard} />
           )}
 

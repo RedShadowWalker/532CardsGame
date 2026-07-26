@@ -1,10 +1,16 @@
 import type { GameStateDTO } from "../shared/socketEvents";
 import { Card } from "./Card";
+import { TrickWinnerBanner } from "./TrickWinnerBanner";
 
 interface TableProps {
   gameState: GameStateDTO;
   myPlayerId: string;
   playerNames: Record<string, string>;
+  /** When set, overrides the live currentTrick display (used to hold a just-completed trick on screen). */
+  overrideTrick?: { playerId: string; card: GameStateDTO["currentTrick"][number]["card"] }[] | null;
+  /** Player id to announce as the trick winner, shown as a fading banner. */
+  announceWinnerId?: string | null;
+  showWinnerBanner?: boolean;
 }
 
 // Exactly 3 seats: me (bottom), left, right — no "across" position needed
@@ -15,14 +21,22 @@ const SEAT_POSITION_CLASSES = [
   "top-1/4 right-0 translate-x-1/4", // right
 ];
 
-export function Table({ gameState, myPlayerId, playerNames }: TableProps) {
+export function Table({
+  gameState,
+  myPlayerId,
+  playerNames,
+  overrideTrick,
+  announceWinnerId,
+  showWinnerBanner,
+}: TableProps) {
   const myIndex = gameState.players.indexOf(myPlayerId);
   const seatOrder =
     myIndex === -1
       ? gameState.players
       : [...gameState.players.slice(myIndex), ...gameState.players.slice(0, myIndex)];
 
-  const cardByPlayer = new Map(gameState.currentTrick.map((pc) => [pc.playerId, pc.card]));
+  const trickToShow = overrideTrick ?? gameState.currentTrick;
+  const cardByPlayer = new Map(trickToShow.map((pc) => [pc.playerId, pc.card]));
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md">
@@ -63,6 +77,13 @@ export function Table({ gameState, myPlayerId, playerNames }: TableProps) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/70 text-sm font-semibold">
           Trump: {gameState.trumpSuit}
         </div>
+      )}
+
+      {announceWinnerId && (
+        <TrickWinnerBanner
+          winnerName={playerNames[announceWinnerId] ?? "Someone"}
+          visible={!!showWinnerBanner}
+        />
       )}
     </div>
   );

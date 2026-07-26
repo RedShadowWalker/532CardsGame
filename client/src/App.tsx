@@ -12,7 +12,9 @@ function App() {
     session,
     roomState,
     gameState,
+    lastTrick,
     tosGameState,
+    tosLastTrick,
     tosLeaderboardReveal,
     dismissTosLeaderboardReveal,
     kickedMessage,
@@ -72,6 +74,7 @@ function App() {
             gameState={tosGameState}
             roomState={roomState}
             myPlayerId={myPlayerId!}
+            lastTrick={tosLastTrick}
             leaderboardReveal={tosLeaderboardReveal}
             onDismissLeaderboardReveal={dismissTosLeaderboardReveal}
             onPlaceBid={actions.tosPlaceBid}
@@ -91,6 +94,7 @@ function App() {
           gameState={gameState}
           roomState={roomState}
           myPlayerId={myPlayerId!}
+          lastTrick={lastTrick}
           onChooseTrump={actions.chooseTrump}
           onSettleDebt={actions.settleDebt}
           onRespondToSettlement={actions.respondToSettlement}

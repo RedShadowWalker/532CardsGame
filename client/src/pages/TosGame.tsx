@@ -6,6 +6,7 @@ import type {
   TosGameStateDTO,
   TosLeaderboardRevealPayload,
   TosRankDTO,
+  TosTrickResolvedPayload,
 } from "../shared/socketEvents";
 import { TosTable } from "../components/TosTable";
 import { TosHand } from "../components/TosHand";
@@ -14,11 +15,13 @@ import { TosTrumpPartnerSelector } from "../components/TosTrumpPartnerSelector";
 import { TosScoreBoard } from "../components/TosScoreBoard";
 import { TosLeaderboardModal } from "../components/TosLeaderboardModal";
 import { DealingOverlay } from "../components/DealingOverlay";
+import { useTrickResolution } from "../hooks/useTrickResolution";
 
 interface TosGameProps {
   gameState: TosGameStateDTO;
   roomState: RoomStateDTO;
   myPlayerId: string;
+  lastTrick: TosTrickResolvedPayload | null;
   leaderboardReveal: TosLeaderboardRevealPayload | null;
   onDismissLeaderboardReveal: () => void;
   onPlaceBid: (amount: number) => Promise<unknown>;
@@ -31,10 +34,15 @@ interface TosGameProps {
   onLeaveRoom: () => void;
 }
 
+// Phases where the player already has cards dealt and should see them, even
+// before it's their turn to act — only PLAYING actually lets you click one.
+const HAND_VISIBLE_PHASES = new Set(["AUCTION", "TRUMP_AND_PARTNER_SELECTION", "PLAYING"]);
+
 export function TosGame({
   gameState,
   roomState,
   myPlayerId,
+  lastTrick,
   leaderboardReveal,
   onDismissLeaderboardReveal,
   onPlaceBid,
@@ -52,6 +60,12 @@ export function TosGame({
   const playerNames = Object.fromEntries(roomState.players.map((p) => [p.id, p.name]));
   const isMyTurn = gameState.currentTurnPlayerId === myPlayerId;
   const isDeclarer = gameState.declarerId === myPlayerId;
+
+  // Holds each completed trick on screen for a few seconds (with a winner
+  // banner) instead of it vanishing the instant the 4th card lands. Per-trick
+  // point values are deliberately NOT shown here — captured points only
+  // surface once the whole round is over (see TosScoreBoard).
+  const { phase: trickPhase, activeTrick } = useTrickResolution(lastTrick);
 
   async function handlePlayCard(card: TosCardDTO) {
     setPlayError(null);
@@ -119,7 +133,14 @@ export function TosGame({
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
         <div className="flex-1 flex flex-col items-center gap-4">
           <div className="relative w-full">
-            <TosTable gameState={gameState} myPlayerId={myPlayerId} playerNames={playerNames} />
+            <TosTable
+              gameState={gameState}
+              myPlayerId={myPlayerId}
+              playerNames={playerNames}
+              overrideTrick={trickPhase !== "idle" ? activeTrick?.cards ?? null : null}
+              announceWinnerId={activeTrick?.winnerId ?? null}
+              showWinnerBanner={trickPhase === "announcing"}
+            />
             <DealingOverlay gameState={gameState as any} />
           </div>
 
@@ -161,7 +182,7 @@ export function TosGame({
             </div>
           )}
 
-          {gameState.phase === "PLAYING" && (
+          {HAND_VISIBLE_PHASES.has(gameState.phase) && (
             <TosHand gameState={gameState} isMyTurn={isMyTurn} onPlay={handlePlayCard} />
           )}
 
