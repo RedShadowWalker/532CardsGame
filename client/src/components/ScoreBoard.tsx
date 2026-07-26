@@ -54,13 +54,11 @@ export function ScoreBoard({ gameState, playerNames }: ScoreBoardProps) {
             const target = gameState.targets[playerId] ?? 0;
             const won = gameState.tricksWon[playerId] ?? 0;
             const isTrump = playerId === gameState.trumpPlayerId;
-            const isDealer = playerId === gameState.dealerId;
             return (
               <tr key={playerId} className={isTrump ? "text-yellow-300" : ""}>
                 <td className="py-0.5">
                   {playerNames[playerId] ?? playerId}
-                  {isTrump && " (trump)"}
-                  {isDealer && " (dealer)"}
+                  {isTrump && " (Hukum)"}
                 </td>
                 <td className="py-0.5 text-right">{target}</td>
                 <td className="py-0.5 text-right font-semibold">{won}</td>
@@ -81,7 +79,7 @@ export function ScoreBoard({ gameState, playerNames }: ScoreBoardProps) {
           <ul className="mt-2 space-y-1 text-xs text-white/70">
             {gameState.roundHistory.map((r) => (
               <li key={r.round}>
-                Round {r.round}: {playerNames[r.trumpPlayerId] ?? r.trumpPlayerId} called {r.trumpSuit}
+                Round {r.round}: {playerNames[r.trumpPlayerId] ?? r.trumpPlayerId} declared Hukum: {r.trumpSuit}
                 {r.snatches.length > 0 && (
                   <>
                     {" — "}

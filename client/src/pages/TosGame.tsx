@@ -61,8 +61,8 @@ export function TosGame({
   const isMyTurn = gameState.currentTurnPlayerId === myPlayerId;
   const isDeclarer = gameState.declarerId === myPlayerId;
 
-  // Holds each completed trick on screen for a few seconds (with a winner
-  // banner) instead of it vanishing the instant the 4th card lands. Per-trick
+  // Holds each completed hand on screen for a few seconds (with a winner
+  // banner) instead of it vanishing the instant the 4th card lands. Per-hand
   // point values are deliberately NOT shown here — captured points only
   // surface once the whole round is over (see TosScoreBoard).
   const { phase: trickPhase, activeTrick } = useTrickResolution(lastTrick);
@@ -132,7 +132,7 @@ export function TosGame({
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
         <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="relative w-full">
+          <div className="relative w-full flex-shrink-0">
             <TosTable
               gameState={gameState}
               myPlayerId={myPlayerId}
@@ -159,7 +159,7 @@ export function TosGame({
               <TosTrumpPartnerSelector bidAmount={gameState.bidAmount} onChoose={onChooseTrumpAndPartner} />
             ) : (
               <p className="text-white/70 text-sm">
-                Waiting for {playerNames[gameState.declarerId ?? ""] ?? "the declarer"} to choose trump and a
+                Waiting for {playerNames[gameState.declarerId ?? ""] ?? "the declarer"} to declare Hukum and a
                 partner…
               </p>
             ))}

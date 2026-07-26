@@ -40,21 +40,24 @@ export function Hand({ gameState, isMyTurn, onPlay }: HandProps) {
   const canPlay = isMyTurn && gameState.phase === "PLAYING";
 
   return (
-    <div className="flex flex-wrap justify-center gap-2 px-2">
-      {sorted.map((card) => {
-        const legal = isLikelyLegal(card, hand, leadSuit);
-        return (
-          <Card
-            key={`${card.suit}-${card.rank}`}
-            card={card}
-            size="lg"
-            selectable={canPlay}
-            dimmed={canPlay && !legal}
-            onClick={() => canPlay && onPlay(card)}
-          />
-        );
-      })}
-      {sorted.length === 0 && <p className="text-white/60 italic">No cards left this round.</p>}
+    <div className="flex justify-center">
+      <div className="flex flex-wrap justify-center divide-x divide-white/15 bg-black/10 rounded-lg px-1 py-2">
+        {sorted.map((card) => {
+          const legal = isLikelyLegal(card, hand, leadSuit);
+          return (
+            <div key={`${card.suit}-${card.rank}`} className="px-1.5 first:pl-2 last:pr-2">
+              <Card
+                card={card}
+                size="lg"
+                selectable={canPlay}
+                dimmed={canPlay && !legal}
+                onClick={() => canPlay && onPlay(card)}
+              />
+            </div>
+          );
+        })}
+        {sorted.length === 0 && <p className="text-white/60 italic px-2">No cards left this round.</p>}
+      </div>
     </div>
   );
 }

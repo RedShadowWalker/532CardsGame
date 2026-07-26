@@ -38,9 +38,9 @@ export function TosTrumpPartnerSelector({ bidAmount, onChoose }: TosTrumpPartner
 
   return (
     <div className="bg-black/30 rounded-lg p-4 text-white w-full max-w-md text-center">
-      <p className="font-semibold mb-3">You won the bid at {bidAmount} — choose trump and a partner card</p>
+      <p className="font-semibold mb-3">You won the bid at {bidAmount} — declare Hukum and a partner card</p>
 
-      <p className="text-xs text-white/60 mb-1">Trump suit</p>
+      <p className="text-xs text-white/60 mb-1">Hukum suit</p>
       <div className="flex justify-center gap-2 mb-4">
         {SUITS.map(({ suit: s, symbol, red }) => (
           <button

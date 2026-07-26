@@ -27,8 +27,8 @@ export function TosScoreBoard({ gameState, myPlayerId, playerNames, onRequestVot
 
   const voteStatus = gameState.pendingVoteStatus;
   const iHaveVoted = voteStatus ? voteStatus[myPlayerId] : false;
-  // Points are only revealed once the whole round is over — not trick by
-  // trick during play, which would give away too much too early.
+  // Points are only revealed once the whole round is over — not hand by
+  // hand during play, which would give away too much too early.
   const pointsRevealed = gameState.phase === "ROUND_COMPLETE" || gameState.phase === "MATCH_COMPLETE";
 
   return (
@@ -118,7 +118,7 @@ export function TosScoreBoard({ gameState, myPlayerId, playerNames, onRequestVot
           <ul className="mt-2 space-y-1 text-xs text-white/70">
             {gameState.roundHistory.map((r) => (
               <li key={r.round}>
-                Round {r.round}: {playerNames[r.declarerId] ?? r.declarerId} bid {r.bidAmount} on {r.trumpSuit} —{" "}
+                Round {r.round}: {playerNames[r.declarerId] ?? r.declarerId} bid {r.bidAmount}, Hukum: {r.trumpSuit} —{" "}
                 {r.contractSucceeded ? "made it" : "missed it"} ({r.teamTotal} pts)
               </li>
             ))}

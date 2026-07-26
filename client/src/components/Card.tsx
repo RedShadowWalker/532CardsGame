@@ -1,5 +1,6 @@
 import type { SuitDTO } from "../shared/socketEvents";
 
+// Nicer, slightly bolder suit glyphs than the plain Unicode default weight.
 const SUIT_SYMBOL: Record<SuitDTO, string> = {
   Hearts: "♥",
   Diamonds: "♦",
@@ -25,10 +26,23 @@ interface CardProps {
   onClick?: () => void;
 }
 
+// Card box size, rank text size, and suit-glyph text size configured
+// separately so the suit pip can be noticeably larger than the rank —
+// closer to how a real card reads at a glance.
 const SIZE_CLASSES: Record<NonNullable<CardProps["size"]>, string> = {
-  sm: "w-9 h-13 text-xs",
-  md: "w-14 h-20 text-base",
-  lg: "w-20 h-28 text-2xl",
+  sm: "w-10 h-14",
+  md: "w-16 h-20",
+  lg: "w-24 h-32",
+};
+const RANK_TEXT_CLASSES: Record<NonNullable<CardProps["size"]>, string> = {
+  sm: "text-xs",
+  md: "text-base",
+  lg: "text-xl",
+};
+const SUIT_TEXT_CLASSES: Record<NonNullable<CardProps["size"]>, string> = {
+  sm: "text-lg",
+  md: "text-3xl",
+  lg: "text-4xl",
 };
 
 export function Card({ card, size = "md", faceDown = false, selectable = false, dimmed = false, onClick }: CardProps) {
@@ -49,14 +63,14 @@ export function Card({ card, size = "md", faceDown = false, selectable = false, 
       onClick={onClick}
       className={[
         SIZE_CLASSES[size],
-        "rounded-md bg-white shadow-md border border-slate-300 flex flex-col items-center justify-center font-bold select-none transition-transform",
+        "rounded-md bg-white shadow-md border border-slate-300 flex flex-col items-center justify-center font-bold select-none transition-transform gap-0.5",
         isRed ? "text-red-600" : "text-slate-900",
         selectable ? "cursor-pointer hover:-translate-y-2 hover:shadow-lg" : "cursor-default",
         dimmed ? "opacity-40" : "opacity-100",
       ].join(" ")}
     >
-      <span>{card.rank}</span>
-      <span className="leading-none">{SUIT_SYMBOL[card.suit]}</span>
+      <span className={RANK_TEXT_CLASSES[size]}>{card.rank}</span>
+      <span className={`leading-none drop-shadow-sm ${SUIT_TEXT_CLASSES[size]}`}>{SUIT_SYMBOL[card.suit]}</span>
     </button>
   );
 }

@@ -12,7 +12,7 @@ export function TrickWinnerBanner({ winnerName, visible }: TrickWinnerBannerProp
       ].join(" ")}
     >
       <div className="bg-black/70 rounded-xl px-5 py-3 text-white text-center shadow-lg">
-        <p className="text-lg font-bold">{winnerName} wins the trick!</p>
+        <p className="text-lg font-bold">{winnerName} wins the hand!</p>
       </div>
     </div>
   );

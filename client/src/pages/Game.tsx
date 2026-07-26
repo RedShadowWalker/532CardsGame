@@ -23,7 +23,7 @@ interface GameProps {
 
 // Phases where the player already has cards in hand and should see them,
 // even though it's not their turn to play yet (they were dealt 5 cards
-// before trump is even chosen, and settlement also happens with a full
+// before Hukum is even declared, and settlement also happens with a full
 // 10-card hand) — only PLAYING actually lets you click a card.
 const HAND_VISIBLE_PHASES = new Set(["TRUMP_SELECTION", "SETTLEMENT", "PLAYING"]);
 
@@ -46,7 +46,7 @@ export function Game({
   const isMyTurn = gameState.currentTurnPlayerId === myPlayerId;
   const isTrumpPlayer = gameState.trumpPlayerId === myPlayerId;
 
-  // Holds the last completed trick on screen for a few seconds (with a
+  // Holds the last completed hand on screen for a few seconds (with a
   // winner banner) instead of it vanishing the instant the 4th card lands.
   const { phase: trickPhase, activeTrick } = useTrickResolution(lastTrick);
 
@@ -73,6 +73,21 @@ export function Game({
 
   return (
     <div className="min-h-screen flex flex-col items-center px-3 py-6 text-white gap-4">
+      {/* Settlement is a hard gate before play resumes — shown as a blocking
+          modal so it's impossible to miss and can't be dismissed until the
+          debtor(s) actually resolve every pending item. */}
+      {gameState.phase === "SETTLEMENT" && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
+          <SettlementPanel
+            gameState={gameState}
+            myPlayerId={myPlayerId}
+            playerNames={playerNames}
+            onSettleDebt={onSettleDebt}
+            onRespondToSettlement={onRespondToSettlement}
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between w-full max-w-4xl">
         <h1 className="text-xl font-bold">5-3-2 — Round {gameState.round}</h1>
         <button className="text-sm text-white/40 hover:text-white/70" onClick={onLeaveRoom}>
@@ -82,7 +97,7 @@ export function Game({
 
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-4xl items-start justify-center">
         <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="relative w-full">
+          <div className="relative w-full flex-shrink-0">
             <Table
               gameState={gameState}
               myPlayerId={myPlayerId}
@@ -99,19 +114,9 @@ export function Game({
               <TrumpSelector onChoose={onChooseTrump} />
             ) : (
               <p className="text-white/70 text-sm">
-                Waiting for {playerNames[gameState.trumpPlayerId ?? ""] ?? "the Trump Player"} to choose trump…
+                Waiting for {playerNames[gameState.trumpPlayerId ?? ""] ?? "the Hukum caller"} to declare Hukum…
               </p>
             ))}
-
-          {gameState.phase === "SETTLEMENT" && (
-            <SettlementPanel
-              gameState={gameState}
-              myPlayerId={myPlayerId}
-              playerNames={playerNames}
-              onSettleDebt={onSettleDebt}
-              onRespondToSettlement={onRespondToSettlement}
-            />
-          )}
 
           {gameState.phase === "ROUND_COMPLETE" && (
             <div className="bg-black/30 rounded-lg p-4 text-center">

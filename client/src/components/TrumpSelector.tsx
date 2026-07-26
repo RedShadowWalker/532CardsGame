@@ -29,7 +29,7 @@ export function TrumpSelector({ onChoose }: TrumpSelectorProps) {
 
   return (
     <div className="bg-black/30 rounded-lg p-4 text-white w-full max-w-sm text-center">
-      <p className="font-semibold mb-3">You're the Trump Player this round — choose trump</p>
+      <p className="font-semibold mb-3">You're the Hukum caller this round — declare Hukum</p>
       <div className="flex justify-center gap-3">
         {SUITS.map(({ suit, symbol, red }) => (
           <button
