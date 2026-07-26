@@ -14,9 +14,10 @@ import { Server } from "socket.io";
 import { RoomManager } from "./RoomManager";
 import { broadcastRoomState } from "./broadcast";
 import { registerGameHandlers } from "./sockets/gameSocket";
+import { registerToSGameHandlers } from "./sockets/gameToSSocket";
 import { registerLobbyHandlers } from "./sockets/lobbySocket";
 
-export function createServer(maxPlayersPerRoom = 3) {
+export function createServer() {
   // CLIENT_ORIGIN lets you lock CORS down to your deployed frontend's URL
   // without touching code — set it as an env var on Railway/Render. Left
   // unset (e.g. local dev), it falls back to allowing any origin. Supports
@@ -35,11 +36,12 @@ export function createServer(maxPlayersPerRoom = 3) {
     cors: { origin: clientOrigin },
   });
 
-  const rooms = new RoomManager(maxPlayersPerRoom);
+  const rooms = new RoomManager();
 
   io.on("connection", (socket) => {
     registerLobbyHandlers(io, socket, rooms);
     registerGameHandlers(io, socket, rooms);
+    registerToSGameHandlers(io, socket, rooms);
 
     socket.on("disconnect", () => {
       // A raw disconnect is often just a page refresh or a wifi blip, not an

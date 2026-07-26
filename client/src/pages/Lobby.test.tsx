@@ -8,6 +8,8 @@ function makeRoomState(overrides: Partial<RoomStateDTO> = {}): RoomStateDTO {
   return {
     roomCode: "ABCD12",
     hostId: "p1",
+    gameType: "532",
+    matchLength: null,
     maxPlayers: 3,
     status: "LOBBY",
     allReady: false,

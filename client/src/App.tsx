@@ -1,8 +1,10 @@
 import { useSocket } from "./hooks/useSocket";
 import { useGame } from "./hooks/useGame";
 import { Home } from "./pages/Home";
+import { SelectGame } from "./pages/SelectGame";
 import { Lobby } from "./pages/Lobby";
 import { Game } from "./pages/Game";
+import { TosGame } from "./pages/TosGame";
 
 function App() {
   const { socket, connected } = useSocket();
@@ -10,6 +12,9 @@ function App() {
     session,
     roomState,
     gameState,
+    tosGameState,
+    tosLeaderboardReveal,
+    dismissTosLeaderboardReveal,
     kickedMessage,
     dismissKickedMessage,
     myPlayerId,
@@ -31,6 +36,8 @@ function App() {
     );
   }
 
+  const isHost = roomState?.players.find((p) => p.id === myPlayerId)?.isHost ?? false;
+
   return (
     <>
       {!connected && (
@@ -41,6 +48,14 @@ function App() {
 
       {!session || !roomState ? (
         <Home onCreateRoom={actions.createRoom} onJoinRoom={actions.joinRoom} />
+      ) : !roomState.gameType ? (
+        isHost ? (
+          <SelectGame roomCode={roomState.roomCode} onSelectGame={actions.selectGame} onLeaveRoom={actions.leaveRoom} />
+        ) : (
+          <div className="min-h-screen flex flex-col items-center justify-center text-white px-4 text-center">
+            <p className="text-lg">Waiting for the host to choose a game…</p>
+          </div>
+        )
       ) : roomState.status === "LOBBY" ? (
         <Lobby
           roomState={roomState}
@@ -51,6 +66,26 @@ function App() {
           onTransferHost={actions.transferHost}
           onLeaveRoom={actions.leaveRoom}
         />
+      ) : roomState.gameType === "threeOfSpades" ? (
+        tosGameState ? (
+          <TosGame
+            gameState={tosGameState}
+            roomState={roomState}
+            myPlayerId={myPlayerId!}
+            leaderboardReveal={tosLeaderboardReveal}
+            onDismissLeaderboardReveal={dismissTosLeaderboardReveal}
+            onPlaceBid={actions.tosPlaceBid}
+            onPass={actions.tosPass}
+            onChooseTrumpAndPartner={actions.tosChooseTrumpAndPartner}
+            onPlayCard={actions.tosPlayCard}
+            onRequestVote={actions.tosRequestLeaderboardVote}
+            onCastVote={actions.tosCastLeaderboardVote}
+            onNextRound={actions.tosNextRound}
+            onLeaveRoom={actions.leaveRoom}
+          />
+        ) : (
+          <div className="min-h-screen flex items-center justify-center text-white">Loading game…</div>
+        )
       ) : gameState ? (
         <Game
           gameState={gameState}

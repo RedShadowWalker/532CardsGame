@@ -7,6 +7,10 @@
  * components await these and show whatever error comes back rather than
  * guessing locally whether a move is legal. The server is still the only
  * source of truth; this hook just makes talking to it convenient.
+ *
+ * Two games share this hook: 5-3-2 (gameState) and Three of Spades
+ * (tosGameState). A room only ever has one active, so components pick which
+ * to read based on roomState.gameType.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +22,7 @@ import type {
   CreateRoomAck,
   CreateRoomRequest,
   GameStateDTO,
+  GameType,
   JoinRoomAck,
   JoinRoomRequest,
   KickedPayload,
@@ -26,8 +31,17 @@ import type {
   RespondToSettlementRequest,
   RoomStateDTO,
   RoundCompletePayload,
+  SelectGameRequest,
   SetReadyRequest,
   SettleDebtRequest,
+  TosCastLeaderboardVoteRequest,
+  TosChooseTrumpAndPartnerRequest,
+  TosGameStateDTO,
+  TosLeaderboardRevealPayload,
+  TosPlaceBidRequest,
+  TosPlayCardRequest,
+  TosRoundCompletePayload,
+  TosTrickResolvedPayload,
   TransferHostRequest,
   TrickResolvedPayload,
 } from "../shared/socketEvents";
@@ -74,9 +88,18 @@ function emitAck<TReq, TAck>(socket: Socket, event: string, payload: TReq): Prom
 export function useGame(socket: Socket, connected: boolean) {
   const [session, setSession] = useState<SavedSession | null>(() => loadSession());
   const [roomState, setRoomState] = useState<RoomStateDTO | null>(null);
+
+  // 5-3-2
   const [gameState, setGameState] = useState<GameStateDTO | null>(null);
   const [lastTrick, setLastTrick] = useState<TrickResolvedPayload | null>(null);
   const [lastRound, setLastRound] = useState<RoundCompletePayload | null>(null);
+
+  // Three of Spades
+  const [tosGameState, setTosGameState] = useState<TosGameStateDTO | null>(null);
+  const [tosLastTrick, setTosLastTrick] = useState<TosTrickResolvedPayload | null>(null);
+  const [tosLastRound, setTosLastRound] = useState<TosRoundCompletePayload | null>(null);
+  const [tosLeaderboardReveal, setTosLeaderboardReveal] = useState<TosLeaderboardRevealPayload | null>(null);
+
   const [kickedMessage, setKickedMessage] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const rejoinAttempted = useRef(false);
@@ -87,11 +110,18 @@ export function useGame(socket: Socket, connected: boolean) {
     const onGameState = (state: GameStateDTO) => setGameState(state);
     const onTrickResolved = (trick: TrickResolvedPayload) => setLastTrick(trick);
     const onRoundComplete = (summary: RoundCompletePayload) => setLastRound(summary);
+
+    const onTosGameState = (state: TosGameStateDTO) => setTosGameState(state);
+    const onTosTrickResolved = (trick: TosTrickResolvedPayload) => setTosLastTrick(trick);
+    const onTosRoundComplete = (summary: TosRoundCompletePayload) => setTosLastRound(summary);
+    const onTosLeaderboardReveal = (reveal: TosLeaderboardRevealPayload) => setTosLeaderboardReveal(reveal);
+
     const onKicked = (payload: KickedPayload) => {
       clearSession();
       setSession(null);
       setRoomState(null);
       setGameState(null);
+      setTosGameState(null);
       setKickedMessage(payload.message);
     };
 
@@ -99,6 +129,10 @@ export function useGame(socket: Socket, connected: boolean) {
     socket.on(ServerEvents.GameState, onGameState);
     socket.on(ServerEvents.TrickResolved, onTrickResolved);
     socket.on(ServerEvents.RoundComplete, onRoundComplete);
+    socket.on(ServerEvents.TosState, onTosGameState);
+    socket.on(ServerEvents.TosTrickResolved, onTosTrickResolved);
+    socket.on(ServerEvents.TosRoundComplete, onTosRoundComplete);
+    socket.on(ServerEvents.TosLeaderboardReveal, onTosLeaderboardReveal);
     socket.on(ServerEvents.Kicked, onKicked);
 
     return () => {
@@ -106,6 +140,10 @@ export function useGame(socket: Socket, connected: boolean) {
       socket.off(ServerEvents.GameState, onGameState);
       socket.off(ServerEvents.TrickResolved, onTrickResolved);
       socket.off(ServerEvents.RoundComplete, onRoundComplete);
+      socket.off(ServerEvents.TosState, onTosGameState);
+      socket.off(ServerEvents.TosTrickResolved, onTosTrickResolved);
+      socket.off(ServerEvents.TosRoundComplete, onTosRoundComplete);
+      socket.off(ServerEvents.TosLeaderboardReveal, onTosLeaderboardReveal);
       socket.off(ServerEvents.Kicked, onKicked);
     };
   }, [socket]);
@@ -127,7 +165,7 @@ export function useGame(socket: Socket, connected: boolean) {
     });
   }, [connected, session, socket]);
 
-  // ---- Actions ----
+  // ---- Lobby / room actions ----
 
   const createRoom = useCallback(
     async (playerName: string) => {
@@ -170,7 +208,14 @@ export function useGame(socket: Socket, connected: boolean) {
     setSession(null);
     setRoomState(null);
     setGameState(null);
+    setTosGameState(null);
   }, [socket]);
+
+  const selectGame = useCallback(
+    (gameType: GameType, matchLength?: number) =>
+      emitAck<SelectGameRequest, {}>(socket, ClientEvents.SelectGame, { gameType, matchLength }),
+    [socket]
+  );
 
   const setReady = useCallback(
     (ready: boolean) => emitAck<SetReadyRequest, {}>(socket, ClientEvents.SetReady, { ready }),
@@ -189,6 +234,8 @@ export function useGame(socket: Socket, connected: boolean) {
     (newHostId: string) => emitAck<TransferHostRequest, {}>(socket, ClientEvents.TransferHost, { newHostId }),
     [socket]
   );
+
+  // ---- 5-3-2 actions ----
 
   const chooseTrump = useCallback(
     (suit: ChooseTrumpRequest["suit"]) => emitAck<ChooseTrumpRequest, {}>(socket, ClientEvents.ChooseTrump, { suit }),
@@ -214,12 +261,53 @@ export function useGame(socket: Socket, connected: boolean) {
 
   const nextRound = useCallback(() => emitAck<{}, {}>(socket, ClientEvents.NextRound, {}), [socket]);
 
+  // ---- Three of Spades actions ----
+
+  const tosPlaceBid = useCallback(
+    (amount: number) => emitAck<TosPlaceBidRequest, {}>(socket, ClientEvents.TosPlaceBid, { amount }),
+    [socket]
+  );
+
+  const tosPass = useCallback(() => emitAck<{}, {}>(socket, ClientEvents.TosPass, {}), [socket]);
+
+  const tosChooseTrumpAndPartner = useCallback(
+    (suit: TosChooseTrumpAndPartnerRequest["suit"], partnerCard: TosChooseTrumpAndPartnerRequest["partnerCard"]) =>
+      emitAck<TosChooseTrumpAndPartnerRequest, {}>(socket, ClientEvents.TosChooseTrumpAndPartner, {
+        suit,
+        partnerCard,
+      }),
+    [socket]
+  );
+
+  const tosPlayCard = useCallback(
+    (card: TosPlayCardRequest["card"]) => emitAck<TosPlayCardRequest, {}>(socket, ClientEvents.TosPlayCard, { card }),
+    [socket]
+  );
+
+  const tosRequestLeaderboardVote = useCallback(
+    () => emitAck<{}, {}>(socket, ClientEvents.TosRequestLeaderboardVote, {}),
+    [socket]
+  );
+
+  const tosCastLeaderboardVote = useCallback(
+    (vote: boolean) =>
+      emitAck<TosCastLeaderboardVoteRequest, {}>(socket, ClientEvents.TosCastLeaderboardVote, { vote }),
+    [socket]
+  );
+
+  const tosNextRound = useCallback(() => emitAck<{}, {}>(socket, ClientEvents.TosNextRound, {}), [socket]);
+
   return {
     session,
     roomState,
     gameState,
     lastTrick,
     lastRound,
+    tosGameState,
+    tosLastTrick,
+    tosLastRound,
+    tosLeaderboardReveal,
+    dismissTosLeaderboardReveal: () => setTosLeaderboardReveal(null),
     kickedMessage,
     dismissKickedMessage: () => setKickedMessage(null),
     connectionError,
@@ -229,6 +317,7 @@ export function useGame(socket: Socket, connected: boolean) {
       createRoom,
       joinRoom,
       leaveRoom,
+      selectGame,
       setReady,
       startGame,
       kickPlayer,
@@ -238,6 +327,13 @@ export function useGame(socket: Socket, connected: boolean) {
       respondToSettlement,
       playCard,
       nextRound,
+      tosPlaceBid,
+      tosPass,
+      tosChooseTrumpAndPartner,
+      tosPlayCard,
+      tosRequestLeaderboardVote,
+      tosCastLeaderboardVote,
+      tosNextRound,
     },
   };
 }

@@ -31,20 +31,11 @@ export function registerGameHandlers(io: Server, socket: Socket, rooms: RoomMana
     const found = rooms.findBySocket(socket.id);
     if (!found) throw new Error("You are not seated in a room.");
     if (!found.room.engine) throw new Error("The game hasn't started yet.");
+    if (!(found.room.engine instanceof GameEngine)) {
+      throw new Error("This room isn't playing 5-3-2.");
+    }
     return { room: found.room, player: found.player, engine: found.room.engine };
   }
-
-  socket.on(ClientEvents.StartGame, (_req: unknown, ack: (res: AckResponse) => void) => {
-    try {
-      const found = rooms.findBySocket(socket.id);
-      if (!found) throw new Error("You are not seated in a room.");
-      const room = rooms.startGame(found.room.code, found.player.id);
-      ack({ ok: true });
-      broadcastGameState(io, room);
-    } catch (err) {
-      ack({ ok: false, error: (err as Error).message });
-    }
-  });
 
   socket.on(ClientEvents.ChooseTrump, (req: ChooseTrumpRequest, ack: (res: AckResponse) => void) => {
     try {

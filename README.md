@@ -1,56 +1,56 @@
-# 5-3-2 Card Game
+# Card Game Night
 
-A 3-player online implementation of the 5-3-2 card game, built to an exact
-house-rules specification: a custom 30-card deck, trump assigned by
-rotation (not bidding), and a running hand-debt ledger settled between
-rounds.
+An online card game server hosting two games — pick one per room:
+
+- **5-3-2**: 3 players, custom 30-card deck, trump assigned by rotation, a running hand-debt ledger settled between rounds.
+- **Three of Spades**: 4 players, standard 52-card deck, auction bidding, a hidden partner chosen by the auction winner, point-capture scoring, and a hidden cumulative leaderboard revealed only by unanimous vote.
 
 ```
 532-game/
-  server/   Node + Express + Socket.IO backend (authoritative game engine)
+  server/   Node + Express + Socket.IO backend (authoritative for both games)
   client/   React + TypeScript + Tailwind frontend
 ```
 
 ## Do you need a database?
 
-**No.** Everything runs in memory on the server for as long as it's up —
-rooms, hands, the trick count, and the running debt ledger. If the server
-restarts, active games are lost and everyone needs a new room. That's the
-right tradeoff for a friends game night, not a persistent platform.
+**No.** Everything runs in memory on the server for as long as it's up — rooms,
+hands, tricks, ledgers, cumulative scores. If the server restarts, active games
+are lost and everyone needs a new room. That's the right tradeoff for a
+friends game night, not a persistent platform.
+
+## How a game works, end to end
+
+1. Host opens the client, creates a room, and gets a 6-character code.
+2. **The host picks a game** (5-3-2 or Three of Spades, plus a match length —
+   7 or 10 rounds — for Three of Spades). The room isn't joinable until this
+   happens; the choice locks in the seat count.
+3. Friends join with the room code, everyone clicks **I'm ready** — the game
+   starts automatically once every seat is full and ready (or the host can
+   force-start early).
+4. Play proceeds entirely server-validated; a client can propose an illegal
+   move but the server always rejects it.
+5. After a round completes, anyone can click through to the next round —
+   scores/ledgers accumulate across rounds until the match ends (5-3-2 has no
+   fixed end; Three of Spades ends after the chosen number of rounds).
 
 ## The rules, as implemented
 
-- **Exactly 3 players**, no teams.
-- **Custom 30-card deck**: Spades and Hearts carry all 8 ranks (7,8,9,10,J,Q,K,A);
-  Diamonds and Clubs carry only 7 (no 7 of Diamonds/Clubs exists).
-- **Trump rotates every round** — round 1 is seat 0, round 2 is seat 1, round 3 is
-  seat 2, then back to seat 0. The Trump Player directly names the suit — there's
-  no bidding auction in this variant.
-- **Dealer is always the player to the right of the Trump Player**; the player to
-  their left gets the Left Player role. Targets are fixed by role: Trump Player
-  needs 5 tricks, Left Player needs 3, Dealer needs 2.
-- **Deal happens in two stages**: 5 cards each (trump is chosen having seen only
-  these), then 5 more once trump is set — 10 cards total, deck fully exhausted.
-- **Hand-debt settlement**, between the second deal and the first trick, for any
-  debts left over from previous rounds:
-  - Debts between the same two players always net into a single running balance.
-  - A debtor picks Card Settlement (a random card exchange the creditor can keep
-    — returning a different card, never their last of a suit — or reject) or
-    Carry Forward, decided separately for each person they owe.
-  - Once a player's *total* debt (summed across everyone they owe) reaches 4
-    hands, Carry Forward is no longer available — Card Settlement is forced.
-- **Standard trick play**: follow suit if you can; if you can't, play anything,
-  including trump; highest trump (if any was played) or highest of the led suit
-  wins; trick winner leads next.
-- **Round end**: each player's tricks-won-minus-target difference is computed;
-  players who beat their target snatch hands from players who missed theirs;
-  the ledger updates accordingly, trump rotates, and the next round begins.
+### 5-3-2
+- Trump rotates every round (no bidding) — round 1 is seat 0, round 2 seat 1, seat 2, then wraps.
+- Dealer is always to the right of the Trump Player; targets are fixed by role: Trump Player needs 5 tricks, Left Player 3, Dealer 2.
+- Deal happens in two stages (5, then 5 more) with trump chosen after only seeing the first 5.
+- A hand-debt ledger settles between rounds: debts between the same two players always net together; a debtor picks Card Settlement (random card exchange) or Carry Forward per person they owe; once a player's total debt reaches 4 hands, Carry Forward is no longer available.
 
-Every one of these rules is implemented and tested in
-`server/src/game/` — see `GameEngine.ts`, `Ledger.ts`, and `Seating.ts` for the
-exact logic and the reasoning behind a couple of judgment calls the original
-spec described narratively without pinning down as an algorithm (documented
-inline, and confirmed with the person who commissioned this build).
+See `server/src/game/GameEngine.ts` and `Ledger.ts` for the exact logic and the documented reasoning behind the judgment calls the original spec left as narrative rather than algorithm (confirmed with whoever commissioned the build, not guessed).
+
+### Three of Spades
+- Auction: opens at 130, each raise must be at least +5, up to a max of 270; once you pass you're out for the round; last bidder standing is the declarer.
+- Declarer names a trump suit and a **partner card** (e.g. "Ace of Clubs") — both are public immediately, but *who holds that card* stays secret until it's actually played.
+- Standard follow-suit trick play; trick winner captures every point in that trick (Ace=15, K/Q/J/10=10, 5=5, 3 of Spades=30 uniquely, everything else 0 — totals 270 across the deck).
+- Contract succeeds if declarer + partner's combined captured points meet the bid: declarer scores ±2× the bid, partner ±1×, defenders unaffected. Whether the contract succeeded is public immediately.
+- **Cumulative scores stay hidden** the whole match — any player can request a leaderboard peek after a round, but it only actually reveals if all 4 players vote yes; otherwise play continues with scores still secret. Final standings are always revealed once the match's last round completes.
+
+See `server/src/gameToS/ThreeOfSpadesEngine.ts` for the exact logic and documented assumptions (follow-suit/trick-winner rules and the auction's starting seat aren't restated in the original spec, but there's only one sensible reading given everything else in it).
 
 ## Local development
 
@@ -69,54 +69,32 @@ cp .env.example .env    # then edit VITE_SERVER_URL if needed (defaults to local
 npm run dev              # starts on http://localhost:5173
 ```
 
-Open `http://localhost:5173` in three browser tabs to test solo — create a
-room in one, join with the code in the other two.
+Open `http://localhost:5173` in several browser tabs to test solo — 3 for 5-3-2, 4 for Three of Spades.
 
 ### Running the tests
 ```bash
-cd server && npm test    # unit tests + a real Socket.IO integration test
+cd server && npm test    # unit tests + real Socket.IO integration tests for both games
 cd client && npm test    # hook logic + component interaction tests
 ```
 
 ## Deployment
 
-Already set up on Railway (server) and Vercel (client) — this update only
-changes game logic and UI, not deployment configuration. If you're setting
-it up fresh:
+Already set up on Railway (server) and Vercel (client) — nothing about this
+update changes deployment configuration, only game logic and UI. If setting
+up fresh:
 
-- **Server → Railway**: root directory `server`, build `npm install && npm run build`,
-  start `npm start`. Set `CLIENT_ORIGIN` to your Vercel URL once you have it
-  (locks down Socket.IO's CORS to just your frontend).
-- **Client → Vercel**: root directory `client`, framework Vite (auto-detected),
-  env var `VITE_SERVER_URL` pointing at your Railway URL.
+- **Server → Railway**: root directory `server`, build `npm install && npm run build`, start `npm start`. Set `CLIENT_ORIGIN` to your Vercel URL once you have it.
+- **Client → Vercel**: root directory `client`, framework Vite (auto-detected), env var `VITE_SERVER_URL` pointing at your Railway URL.
 
-## How a game works, end to end
+## Known judgment calls (confirmed or clearly forced, not guessed)
 
-1. Host creates a room, gets a 6-character code; two friends join with it.
-2. Everyone clicks **I'm ready** — the game starts automatically once all 3
-   are ready (no one has to click "start"), or the host can force-start early.
-3. First 5 cards are dealt; the Trump Player (rotates each round) names the suit;
-   the remaining 5 are dealt, bringing everyone to 10.
-4. If any hand debts are pending from previous rounds, each debtor works through
-   them one at a time (Card Settlement or Carry Forward) before play begins.
-5. Trump Player leads the first trick; play proceeds with mandatory follow-suit,
-   validated entirely server-side.
-6. After 10 tricks, targets are checked, the ledger updates, and anyone can click
-   **Start next round** to keep going — trump has rotated to the next seat.
+**5-3-2** (confirmed explicitly with whoever commissioned the build):
+- The 4-hand max-debt cap applies to a player's *total* debt across everyone they owe, checked live at each decision — not a one-time snapshot, and not per-relationship.
+- The settlement method (Card Settlement vs. Carry Forward) is chosen separately for each person owed.
+- Debts between the same two players always net into one running balance — this is also what makes "extra tricks later settle a previous debt" work automatically.
 
-## Known judgment calls (confirmed, not guessed)
-
-The original spec described the settlement/ledger system narratively without
-fully specifying it as an algorithm. These three points were confirmed
-explicitly rather than assumed:
-
-- The 4-hand max-debt cap applies to a player's **total** debt across everyone
-  they owe, not per relationship.
-- The settlement method (Card Settlement vs. Carry Forward) is chosen
-  **separately for each person owed**, not once for everything.
-- Debts between the same two players **always net** into one running balance
-  — this is also what makes "extra tricks later settle a previous debt" (spec
-  section 11) work automatically, with no separate mechanic needed.
-
-See the doc comments at the top of `server/src/game/Ledger.ts` for the full
-reasoning.
+**Three of Spades** (the spec didn't restate these, but there's no other sensible reading):
+- Follow-suit is mandatory; highest trump (if any played) or highest of the led suit wins each trick — implicit in "trump suit" and "trick" meaning anything at all, and consistent with 5-3-2's own rules.
+- The auction starts with the player left of the dealer, mirroring how the deal itself starts.
+- If everyone passes with no bid ever placed (not addressed in the spec), the round redeals rather than getting stuck.
+- If the declarer's own hand happens to hold their chosen partner card, they end up partnered with themselves — the spec doesn't forbid this, so it's allowed as a "solo" round (declarer's ±2× payout applies once, not double-counted).

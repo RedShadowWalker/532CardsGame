@@ -1,4 +1,4 @@
-import type { CardDTO, SuitDTO } from "../shared/socketEvents";
+import type { SuitDTO } from "../shared/socketEvents";
 
 const SUIT_SYMBOL: Record<SuitDTO, string> = {
   Hearts: "♥",
@@ -9,8 +9,15 @@ const SUIT_SYMBOL: Record<SuitDTO, string> = {
 
 const RED_SUITS: SuitDTO[] = ["Hearts", "Diamonds"];
 
+/** Loose shape covering both games' card DTOs (5-3-2's 7-A ranks, ToS's full 2-A). */
+export interface AnyCard {
+  suit: SuitDTO;
+  rank: string;
+  value: number;
+}
+
 interface CardProps {
-  card: CardDTO;
+  card: AnyCard;
   size?: "sm" | "md" | "lg";
   faceDown?: boolean;
   selectable?: boolean;

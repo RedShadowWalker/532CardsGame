@@ -3,22 +3,25 @@
  * Owns rooms (lobby + in-progress games) independently of Socket.IO itself,
  * so it can be unit tested without spinning up a real server/socket.
  *
- * Each room holds at most one GameEngine instance. It's created either when
- * the host explicitly starts the game (startGame) or automatically the
- * instant every seated player is connected and ready (setReady) — whichever
- * comes first. Host-only controls (kickPlayer, transferHost) are also
- * enforced here, not in the socket layer, so they're covered by the same
- * unit tests as everything else. The server (sockets/*.ts) is the only
- * thing that ever calls mutating methods here — clients never touch this
- * class directly.
+ * A room is created by the host alone, holding no game and no seat limit
+ * yet. The host must selectGame() before anyone else can join — that
+ * choice determines the room's maxPlayers (see games.ts) and which engine
+ * class gets instantiated once the room fills and starts. Everything after
+ * that (readiness, auto-start, host controls) works exactly the same
+ * regardless of which game was picked.
  */
 
 import { v4 as uuidv4 } from "uuid";
 import { GameEngine } from "./game/GameEngine";
-import { PlayerId } from "./game/types";
+import { PlayerId as Player532Id } from "./game/types";
+import { ThreeOfSpadesEngine } from "./gameToS/ThreeOfSpadesEngine";
+import { GAME_CATALOG, GameType, MatchLength, MATCH_LENGTHS } from "./games";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easier to read aloud
 const ROOM_CODE_LENGTH = 6;
+
+export type PlayerId = Player532Id;
+export type AnyEngine = GameEngine | ThreeOfSpadesEngine;
 
 export interface RoomPlayer {
   id: PlayerId;
@@ -32,10 +35,12 @@ export interface RoomPlayer {
 export interface Room {
   code: string;
   hostId: PlayerId;
-  maxPlayers: number;
+  gameType: GameType | null;
+  maxPlayers: number | null;
+  matchLength: MatchLength | null; // only meaningful for games that need it (Three of Spades)
   players: RoomPlayer[];
   status: "LOBBY" | "IN_GAME";
-  engine: GameEngine | null;
+  engine: AnyEngine | null;
   createdAt: number;
   /** Updated whenever a player disconnects; used by sweepIdleRooms(). */
   lastActivityAt: number;
@@ -47,8 +52,6 @@ export class RoomManager {
   private rooms = new Map<string, Room>();
   /** Reverse index for O(1) disconnect handling. */
   private socketIndex = new Map<string, { roomCode: string; playerId: PlayerId }>();
-
-  constructor(private readonly maxPlayers = 3) {}
 
   private generateRoomCode(): string {
     let code: string;
@@ -74,7 +77,9 @@ export class RoomManager {
     const room: Room = {
       code,
       hostId: player.id,
-      maxPlayers: this.maxPlayers,
+      gameType: null,
+      maxPlayers: null,
+      matchLength: null,
       players: [player],
       status: "LOBBY",
       engine: null,
@@ -86,10 +91,46 @@ export class RoomManager {
   }
 
   /**
+   * Host picks which game this room will play. Only allowed while the host
+   * is still the only person seated — once a friend has joined, the seat
+   * count is locked in, so changing games (and thus maxPlayers) would be
+   * confusing. `matchLength` is required for games whose catalog entry
+   * says needsMatchLength (currently just Three of Spades: 7 or 10).
+   */
+  selectGame(roomCode: string, hostId: PlayerId, gameType: GameType, matchLength?: MatchLength): Room {
+    const room = this.getRoomOrThrow(roomCode);
+    if (room.hostId !== hostId) {
+      throw new RoomError("Only the host can choose the game.");
+    }
+    if (room.status !== "LOBBY") {
+      throw new RoomError("Cannot change the game after it has started.");
+    }
+    if (room.players.length > 1) {
+      throw new RoomError("Cannot change the game once other players have joined.");
+    }
+    const config = GAME_CATALOG[gameType];
+    if (!config) {
+      throw new RoomError(`Unknown game type: ${gameType}`);
+    }
+    if (config.needsMatchLength) {
+      if (!matchLength || !MATCH_LENGTHS.includes(matchLength)) {
+        throw new RoomError(`${config.label} requires a match length of ${MATCH_LENGTHS.join(" or ")} rounds.`);
+      }
+      room.matchLength = matchLength;
+    } else {
+      room.matchLength = null;
+    }
+    room.gameType = gameType;
+    room.maxPlayers = config.maxPlayers;
+    return room;
+  }
+
+  /**
    * Joins a room. If `token` matches an existing seat in the room, this is
    * treated as a reconnection (name/socket refreshed on that seat). If
-   * `token` doesn't match anything, this is a new seat — only allowed while
-   * the room is still in LOBBY and has room to spare.
+   * `token` doesn't match anything, this is a new seat — only allowed once
+   * the host has picked a game, while the room is still in LOBBY, and has
+   * room to spare.
    */
   joinRoom(roomCode: string, playerName: string, token?: string): { room: Room; player: RoomPlayer } {
     const room = this.rooms.get(roomCode);
@@ -108,6 +149,9 @@ export class RoomManager {
 
     if (room.status !== "LOBBY") {
       throw new RoomError(`Room ${roomCode} has already started; rejoin requires your original seat token.`);
+    }
+    if (!room.gameType || !room.maxPlayers) {
+      throw new RoomError("The host hasn't chosen a game for this room yet.");
     }
     if (room.players.length >= room.maxPlayers) {
       throw new RoomError(`Room ${roomCode} is full (${room.maxPlayers} players).`);
@@ -180,7 +224,7 @@ export class RoomManager {
     return room;
   }
 
-  /** Starts the game: requires exactly `maxPlayers` seated and a host request. */
+  /** Starts the game: requires a game to have been chosen, exactly maxPlayers seated, and a host request. */
   startGame(roomCode: string, requestingPlayerId: PlayerId): Room {
     const room = this.getRoomOrThrow(roomCode);
     if (room.hostId !== requestingPlayerId) {
@@ -189,10 +233,12 @@ export class RoomManager {
     if (room.status !== "LOBBY") {
       throw new RoomError("This game has already started.");
     }
+    if (!room.gameType || !room.maxPlayers) {
+      throw new RoomError("Choose a game before starting.");
+    }
     if (room.players.length !== room.maxPlayers) {
       throw new RoomError(`Need exactly ${room.maxPlayers} players to start (have ${room.players.length}).`);
     }
-
     this.launch(room);
     return room;
   }
@@ -207,6 +253,9 @@ export class RoomManager {
     const room = this.getRoomOrThrow(roomCode);
     if (room.status !== "LOBBY") {
       throw new RoomError("Cannot change readiness after the game has started.");
+    }
+    if (!room.gameType) {
+      throw new RoomError("Choose a game before readying up.");
     }
     const player = room.players.find((p) => p.id === playerId);
     if (!player) {
@@ -224,12 +273,19 @@ export class RoomManager {
   /** True once the room is full and every seated player is connected and ready. */
   allReady(room: Room): boolean {
     return (
-      room.players.length === room.maxPlayers && room.players.every((p) => p.connected && p.ready)
+      !!room.maxPlayers &&
+      room.players.length === room.maxPlayers &&
+      room.players.every((p) => p.connected && p.ready)
     );
   }
 
   private launch(room: Room): void {
-    room.engine = new GameEngine(room.players.map((p) => p.id));
+    const playerIds = room.players.map((p) => p.id);
+    if (room.gameType === "threeOfSpades") {
+      room.engine = new ThreeOfSpadesEngine(playerIds, { matchLength: room.matchLength ?? 7 });
+    } else {
+      room.engine = new GameEngine(playerIds);
+    }
     room.engine.startRound();
     room.status = "IN_GAME";
   }

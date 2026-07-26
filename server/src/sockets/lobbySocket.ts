@@ -6,7 +6,7 @@
 
 import { Server, Socket } from "socket.io";
 import { RoomManager, RoomError } from "../RoomManager";
-import { broadcastGameState, broadcastRoomState } from "../broadcast";
+import { broadcastGameState, broadcastRoomState, broadcastTosGameState } from "../broadcast";
 import {
   AckResponse,
   ClientEvents,
@@ -15,6 +15,7 @@ import {
   JoinRoomAck,
   JoinRoomRequest,
   KickPlayerRequest,
+  SelectGameRequest,
   ServerEvents,
   SetReadyRequest,
   TransferHostRequest,
@@ -41,6 +42,26 @@ export function registerLobbyHandlers(io: Server, socket: Socket, rooms: RoomMan
   );
 
   socket.on(
+    ClientEvents.SelectGame,
+    (req: SelectGameRequest, ack: (res: AckResponse) => void) => {
+      try {
+        const found = rooms.findBySocket(socket.id);
+        if (!found) throw new RoomError("You are not seated in a room.");
+        const room = rooms.selectGame(
+          found.room.code,
+          found.player.id,
+          req?.gameType,
+          req?.matchLength as any
+        );
+        ack({ ok: true });
+        broadcastRoomState(io, room);
+      } catch (err) {
+        ack({ ok: false, error: (err as Error).message });
+      }
+    }
+  );
+
+  socket.on(
     ClientEvents.JoinRoom,
     (req: JoinRoomRequest, ack: (res: AckResponse<JoinRoomAck>) => void) => {
       try {
@@ -59,7 +80,11 @@ export function registerLobbyHandlers(io: Server, socket: Socket, rooms: RoomMan
         // (their hand, current turn, scores, etc.) rather than making them
         // wait for the next state-changing action from someone else.
         if (room.status === "IN_GAME") {
-          broadcastGameState(io, room);
+          if (room.gameType === "threeOfSpades") {
+            broadcastTosGameState(io, room);
+          } else {
+            broadcastGameState(io, room);
+          }
         }
       } catch (err) {
         ack({ ok: false, error: (err as Error).message });
@@ -76,6 +101,22 @@ export function registerLobbyHandlers(io: Server, socket: Socket, rooms: RoomMan
     rooms.removeIfEmpty(found.room.code);
   });
 
+  socket.on(ClientEvents.StartGame, (_req: unknown, ack: (res: AckResponse) => void) => {
+    try {
+      const found = rooms.findBySocket(socket.id);
+      if (!found) throw new RoomError("You are not seated in a room.");
+      const room = rooms.startGame(found.room.code, found.player.id);
+      ack({ ok: true });
+      if (room.gameType === "threeOfSpades") {
+        broadcastTosGameState(io, room);
+      } else {
+        broadcastGameState(io, room);
+      }
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
   socket.on(ClientEvents.SetReady, (req: SetReadyRequest, ack: (res: AckResponse) => void) => {
     try {
       const found = rooms.findBySocket(socket.id);
@@ -87,7 +128,11 @@ export function registerLobbyHandlers(io: Server, socket: Socket, rooms: RoomMan
       // Room is full of ready, connected players — the game just started
       // with no host action required. Push everyone their first game state.
       if (autoStarted) {
-        broadcastGameState(io, room);
+        if (room.gameType === "threeOfSpades") {
+          broadcastTosGameState(io, room);
+        } else {
+          broadcastGameState(io, room);
+        }
       }
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });

@@ -309,3 +309,135 @@ describe("useGame — leaving a room", () => {
     expect(localStorage.getItem(SESSION_KEY)).toBeNull();
   });
 });
+
+describe("useGame — game selection", () => {
+  it("emits room:selectGame with gameType and matchLength", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.SelectGame, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.selectGame("threeOfSpades", 7);
+    });
+    expect(fake.lastEmitted(ClientEvents.SelectGame)).toEqual({ gameType: "threeOfSpades", matchLength: 7 });
+  });
+
+  it("omits matchLength when not provided (5-3-2 doesn't need one)", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.SelectGame, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.selectGame("532");
+    });
+    expect(fake.lastEmitted(ClientEvents.SelectGame)).toEqual({ gameType: "532", matchLength: undefined });
+  });
+});
+
+describe("useGame — Three of Spades actions", () => {
+  it("wraps tosPlaceBid and tosPass as ack-resolving promises", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.TosPlaceBid, () => ({ ok: true }));
+    fake.setAckResponder(ClientEvents.TosPass, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.tosPlaceBid(150);
+    });
+    expect(fake.lastEmitted(ClientEvents.TosPlaceBid)).toEqual({ amount: 150 });
+
+    await act(async () => {
+      await result.current.actions.tosPass();
+    });
+    expect(fake.emitted.some((e) => e.event === ClientEvents.TosPass)).toBe(true);
+  });
+
+  it("wraps tosChooseTrumpAndPartner with the correct payload shape", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.TosChooseTrumpAndPartner, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.tosChooseTrumpAndPartner("Hearts", { suit: "Clubs", rank: "A" });
+    });
+    expect(fake.lastEmitted(ClientEvents.TosChooseTrumpAndPartner)).toEqual({
+      suit: "Hearts",
+      partnerCard: { suit: "Clubs", rank: "A" },
+    });
+  });
+
+  it("wraps tosPlayCard with the ToS card shape (full 2-A rank range)", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.TosPlayCard, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.tosPlayCard({ suit: "Diamonds", rank: "3", value: 1 });
+    });
+    expect(fake.lastEmitted(ClientEvents.TosPlayCard)).toEqual({
+      card: { suit: "Diamonds", rank: "3", value: 1 },
+    });
+  });
+
+  it("wraps the leaderboard vote actions", async () => {
+    const fake = new FakeSocket();
+    fake.setAckResponder(ClientEvents.TosRequestLeaderboardVote, () => ({ ok: true }));
+    fake.setAckResponder(ClientEvents.TosCastLeaderboardVote, () => ({ ok: true }));
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    await act(async () => {
+      await result.current.actions.tosRequestLeaderboardVote();
+    });
+    expect(fake.emitted.some((e) => e.event === ClientEvents.TosRequestLeaderboardVote)).toBe(true);
+
+    await act(async () => {
+      await result.current.actions.tosCastLeaderboardVote(true);
+    });
+    expect(fake.lastEmitted(ClientEvents.TosCastLeaderboardVote)).toEqual({ vote: true });
+  });
+
+  it("updates tosGameState when the server pushes tos:state", () => {
+    const fake = new FakeSocket();
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    act(() => {
+      fake.trigger(ServerEvents.TosState, {
+        phase: "AUCTION",
+        round: 1,
+        matchLength: 7,
+        players: ["p1", "p2", "p3", "p4"],
+        dealerId: "p1",
+        handSizes: { p1: 13, p2: 13, p3: 13, p4: 13 },
+        hand: [],
+        declarerId: null,
+        bidAmount: null,
+        trumpSuit: null,
+        partnerCard: null,
+        partnerId: null,
+        partnerRevealed: false,
+        currentTrick: [],
+        capturedPoints: {},
+        roundHistory: [],
+        pendingVoteStatus: null,
+      });
+    });
+
+    expect(result.current.tosGameState?.phase).toBe("AUCTION");
+    expect(result.current.tosGameState?.round).toBe(1);
+  });
+
+  it("updates tosLeaderboardReveal when the server pushes tos:leaderboardReveal, and clears it on dismiss", () => {
+    const fake = new FakeSocket();
+    const { result } = renderHook(() => useGame(asSocket(fake), true));
+
+    act(() => {
+      fake.trigger(ServerEvents.TosLeaderboardReveal, { standings: { p1: 300, p2: -150 } });
+    });
+    expect(result.current.tosLeaderboardReveal?.standings).toEqual({ p1: 300, p2: -150 });
+
+    act(() => {
+      result.current.dismissTosLeaderboardReveal();
+    });
+    expect(result.current.tosLeaderboardReveal).toBeNull();
+  });
+});

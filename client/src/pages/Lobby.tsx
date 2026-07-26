@@ -1,5 +1,10 @@
 import { useState } from "react";
-import type { RoomStateDTO } from "../shared/socketEvents";
+import type { GameType, RoomStateDTO } from "../shared/socketEvents";
+
+const GAME_LABELS: Record<GameType, string> = {
+  "532": "5-3-2",
+  threeOfSpades: "Three of Spades",
+};
 
 interface LobbyProps {
   roomState: RoomStateDTO;
@@ -25,7 +30,8 @@ export function Lobby({
 
   const me = roomState.players.find((p) => p.id === myPlayerId);
   const isHost = me?.isHost ?? false;
-  const seatsLeft = roomState.maxPlayers - roomState.players.length;
+  const maxPlayers = roomState.maxPlayers ?? 0;
+  const seatsLeft = maxPlayers - roomState.players.length;
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -42,6 +48,12 @@ export function Lobby({
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-10 text-white">
       <h1 className="text-2xl font-bold mb-1">Room {roomState.roomCode}</h1>
+      {roomState.gameType && (
+        <p className="text-emerald-300 text-sm mb-1 font-medium">
+          {GAME_LABELS[roomState.gameType]}
+          {roomState.matchLength ? ` · ${roomState.matchLength} rounds` : ""}
+        </p>
+      )}
       <p className="text-white/60 mb-6 text-sm">
         Share this code with your friends — they enter it on the "Join with a room code" screen.
       </p>
@@ -113,7 +125,7 @@ export function Lobby({
         <p className="text-xs text-white/50 text-center mt-2">
           {roomState.allReady
             ? "Everyone's ready — starting…"
-            : `Game starts automatically once all ${roomState.maxPlayers} players are ready.`}
+            : `Game starts automatically once all ${maxPlayers} players are ready.`}
         </p>
 
         {isHost && (

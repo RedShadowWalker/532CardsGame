@@ -13,6 +13,7 @@ import {
   PlayCardRequest,
   RespondToSettlementRequest,
   RoomStateDTO,
+  SelectGameRequest,
   ServerEvents,
   SetReadyRequest,
   SettleDebtRequest,
@@ -57,7 +58,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
   let clients: ClientSocket[] = [];
 
   beforeAll((done) => {
-    const server = createServer(3);
+    const server = createServer();
     httpServer = server.httpServer;
     httpServer.listen(() => {
       const { port } = httpServer.address() as AddressInfo;
@@ -79,6 +80,14 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
     const socket = ioClient(baseUrl, { transports: ["websocket"], forceNew: true });
     clients.push(socket);
     return socket;
+  }
+
+  /** Host selects 5-3-2 right after creating the room, before anyone else can join. */
+  async function selectGame532(hostSocket: ClientSocket) {
+    const ack = await emitAck<SelectGameRequest, AckResponse>(hostSocket, ClientEvents.SelectGame, {
+      gameType: "532",
+    });
+    expect(ack.ok).toBe(true);
   }
 
   /** Drives any Settlement phase to completion: carryForward when allowed, else card+reject. */
@@ -134,6 +143,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
     if (!createRes.ok) return;
     const { roomCode } = createRes;
     expect(roomCode).toHaveLength(6);
+    await selectGame532(host);
 
     const bob = connect();
     await waitFor(bob, "connect");
@@ -164,6 +174,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
     const { roomCode } = (await emitAck<any, AckResponse<CreateRoomAck>>(host, ClientEvents.CreateRoom, {
       playerName: "Alice",
     })) as CreateRoomAck;
+    await selectGame532(host);
 
     for (const name of ["Bob", "Carol"]) {
       const c = connect();
@@ -192,6 +203,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
       playerName: "Alice",
     })) as CreateRoomAck;
     const roomCode = createRes.roomCode;
+    await selectGame532(sockets[0]);
 
     const playerIdBySocketIndex: string[] = [createRes.playerId];
     for (let i = 1; i < 3; i++) {
@@ -351,6 +363,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
       playerName: "Alice",
     })) as CreateRoomAck;
     const roomCode = createRes.roomCode;
+    await selectGame532(sockets[0]);
 
     for (let i = 1; i < 3; i++) {
       const res = await emitAck<any, AckResponse<JoinRoomAck>>(sockets[i], ClientEvents.JoinRoom, {
@@ -396,6 +409,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
       playerName: "Alice",
     })) as CreateRoomAck;
     const roomCode = createRes.roomCode;
+    await selectGame532(host);
 
     const bobJoin = (await emitAck<any, AckResponse<JoinRoomAck>>(bob, ClientEvents.JoinRoom, {
       roomCode,
@@ -438,6 +452,7 @@ describe("Socket.IO server — full 3-player 5-3-2 game", () => {
       playerName: "Alice",
     })) as CreateRoomAck;
     const roomCode = createRes.roomCode;
+    await selectGame532(host);
     const bobJoin = (await emitAck<any, AckResponse<JoinRoomAck>>(bob, ClientEvents.JoinRoom, {
       roomCode,
       playerName: "Bob",
