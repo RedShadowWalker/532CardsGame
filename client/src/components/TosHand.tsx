@@ -49,7 +49,7 @@ export function TosHand({ gameState, isMyTurn, onPlay }: TosHandProps) {
       </div>
 
       {/* One row per suit — scroll VERTICALLY between suits (swipe up/down).
-          Within a row, cards overlap slightly like a real fanned hand. */}
+          Cards stay separated so each one remains fully visible. */}
       <div className="w-full max-h-[230px] overflow-y-auto overflow-x-hidden bg-black/15 rounded-xl p-2 flex flex-col gap-2">
         {groups.map(({ suit, cards }) => (
           <div key={suit} className="flex items-center overflow-x-auto py-1 px-1">
@@ -59,8 +59,7 @@ export function TosHand({ gameState, isMyTurn, onPlay }: TosHandProps) {
               return (
                 <div
                   key={`${card.suit}-${card.rank}`}
-                  className="flex-shrink-0"
-                  style={{ marginLeft: i === 0 ? 0 : "-0.9rem" }}
+                  className={i === 0 ? "flex-shrink-0" : "flex-shrink-0 ml-2"}
                 >
                   {privacyHidden ? (
                     <Card card={card} size="sm" faceDown />
