@@ -82,8 +82,8 @@ export function TosTrumpPartnerSelector({ bidAmount, myHand, onChoose }: TosTrum
         Partner card — whoever holds this becomes your hidden teammate (nobody, including you, will know who until
         it's played). Your own cards aren't shown here since you can't call a card you already hold.
       </p>
-      <div className="max-h-56 overflow-y-auto bg-black/20 rounded-lg p-2 mb-4">
-        <div className="flex flex-wrap justify-center gap-1">
+      <div className="max-h-56 overflow-y-auto bg-black/20 rounded-lg p-3 mb-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-4 sm:gap-5 justify-items-center">
           {candidates.map((c) => {
             const isSelected = partnerCard?.suit === c.suit && partnerCard?.rank === c.rank;
             return (
