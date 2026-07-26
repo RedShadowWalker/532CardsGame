@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CardDTO, GameStateDTO } from "../shared/socketEvents";
 import { Card } from "./Card";
 
@@ -34,29 +35,49 @@ interface HandProps {
 }
 
 export function Hand({ gameState, isMyTurn, onPlay }: HandProps) {
+  const [privacyHidden, setPrivacyHidden] = useState(false);
   const hand = gameState.hand ?? [];
   const sorted = sortHand(hand);
   const leadSuit = gameState.currentTrick.length > 0 ? gameState.currentTrick[0].card.suit : null;
   const canPlay = isMyTurn && gameState.phase === "PLAYING";
 
   return (
-    <div className="flex justify-center">
-      <div className="flex flex-wrap justify-center divide-x divide-white/15 bg-black/10 rounded-lg px-1 py-2">
-        {sorted.map((card) => {
-          const legal = isLikelyLegal(card, hand, leadSuit);
-          return (
-            <div key={`${card.suit}-${card.rank}`} className="px-1.5 first:pl-2 last:pr-2">
-              <Card
-                card={card}
-                size="lg"
-                selectable={canPlay}
-                dimmed={canPlay && !legal}
-                onClick={() => canPlay && onPlay(card)}
-              />
-            </div>
-          );
-        })}
-        {sorted.length === 0 && <p className="text-white/60 italic px-2">No cards left this round.</p>}
+    <div className="w-full flex flex-col items-center gap-1.5">
+      <button
+        className="text-xs text-white/50 hover:text-white/80 underline"
+        onClick={() => setPrivacyHidden((v) => !v)}
+      >
+        {privacyHidden ? "👁 Show my cards" : "🙈 Hide my cards from view"}
+      </button>
+
+      {/* Horizontal scroll strip, not wrap — keeps this row's height fixed
+          regardless of how many cards remain, so the table above it never
+          reflows as the hand shrinks over the course of a round. */}
+      <div className="w-full overflow-x-auto">
+        <div className="flex justify-center gap-1.5 px-2 py-2 min-w-min mx-auto w-fit">
+          {sorted.map((card) => {
+            const legal = isLikelyLegal(card, hand, leadSuit);
+            // Shadowed whenever it isn't actually your turn to act — a
+            // constant visual cue you're waiting, not just for illegal cards.
+            const shadowed = !canPlay || !legal;
+            return (
+              <div key={`${card.suit}-${card.rank}`} className="flex-shrink-0">
+                {privacyHidden ? (
+                  <Card card={card} size="lg" faceDown />
+                ) : (
+                  <Card
+                    card={card}
+                    size="lg"
+                    selectable={canPlay}
+                    dimmed={shadowed}
+                    onClick={() => canPlay && onPlay(card)}
+                  />
+                )}
+              </div>
+            );
+          })}
+          {sorted.length === 0 && <p className="text-white/60 italic px-2">No cards left this round.</p>}
+        </div>
       </div>
     </div>
   );

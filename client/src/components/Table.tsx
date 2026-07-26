@@ -39,8 +39,7 @@ export function Table({
   const cardByPlayer = new Map(trickToShow.map((pc) => [pc.playerId, pc.card]));
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-md min-w-[280px] min-h-[280px] flex-shrink-0">
-      {/* Brown triangular table — 3-player game, 3-sided table. */}
+<div className="relative mx-auto w-[min(90vw,380px)] h-[min(90vw,380px)] flex-shrink-0">      {/* Brown triangular table — 3-player game, 3-sided table. */}
       <div
         className="absolute inset-4 bg-amber-900/70 border-4 border-amber-950/60 shadow-inner"
         style={{ clipPath: "polygon(50% 6%, 6% 94%, 94% 94%)" }}

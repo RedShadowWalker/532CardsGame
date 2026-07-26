@@ -5,8 +5,8 @@ interface TrickLike {
   winnerId: string;
 }
 
-const HOLD_MS = 3000; // how long the completed trick's 4th card stays visible
-const ANNOUNCE_MS = 1600; // how long the "X wins the trick" banner shows after that
+const HOLD_MS = 1000; // how long the completed trick's 4th card stays visible
+const ANNOUNCE_MS = 1000; // how long the "X wins the trick" banner shows after that
 
 export type TrickResolutionPhase = "idle" | "holding" | "announcing";
 
