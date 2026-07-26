@@ -12,7 +12,7 @@ const SUITS: { suit: SuitDTO; symbol: string; red: boolean }[] = [
 const SUIT_ORDER: SuitDTO[] = ["Spades", "Hearts", "Clubs", "Diamonds"];
 const RANK_ORDER: TosRankDTO[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
-/** Every card in the deck, high to low within each suit, as candidate partner-card choices. */
+/**  ok thike Every card in the deck, high to low within each suit, as candidate partner-card choices. */
 function allCandidateCards(): TosCardDTO[] {
   const cards: TosCardDTO[] = [];
   for (const suit of SUIT_ORDER) {
