@@ -251,6 +251,39 @@ describe("GameEngine — settlement phase", () => {
     }
   });
 
+  it("rebuilds the same carried-forward debt when the next round enters Settlement", () => {
+    const engine = new GameEngine(PLAYERS);
+    playRoundsUntilDebtExists(engine);
+    engine.startRound();
+    const trumpPlayer = engine.getTrumpPlayerId()!;
+    engine.chooseTrump(trumpPlayer, Suit.Hearts);
+
+    const item = engine.getCurrentSettlementItem();
+    expect(item).not.toBeNull();
+    const carriedDebt = item!.remaining;
+
+    engine.settleDebt(item!.debtor, item!.creditor, "carryForward");
+    while (engine.getPhase() === GamePhase.Settlement) {
+      const nextItem = engine.getCurrentSettlementItem();
+      if (!nextItem) break;
+      engine.settleDebt(nextItem.debtor, nextItem.creditor, "carryForward");
+    }
+
+    while (engine.getPhase() === GamePhase.Playing) {
+      playRoundToCompletion(engine);
+    }
+
+    engine.startRound();
+    const nextTrump = engine.getTrumpPlayerId()!;
+    engine.chooseTrump(nextTrump, Suit.Hearts);
+
+    const nextItem = engine.getCurrentSettlementItem();
+    expect(nextItem).not.toBeNull();
+    expect(nextItem!.debtor).toBe(item!.debtor);
+    expect(nextItem!.creditor).toBe(item!.creditor);
+    expect(nextItem!.remaining).toBe(carriedDebt);
+  });
+
   it("only the debtor of the CURRENT queue item may settle it", () => {
     const engine = new GameEngine(PLAYERS);
     playRoundsUntilDebtExists(engine);

@@ -50,7 +50,9 @@ export function Table({
           >
             {SUIT_SYMBOL[gameState.trumpSuit]}
           </span>
-          <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Hukum</span>
+          <span className="text-white/80 text-xs font-bold uppercase tracking-widest">
+            Hukum · {gameState.trumpSuit}
+          </span>
         </div>
       )}
 

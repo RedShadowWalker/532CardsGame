@@ -232,7 +232,8 @@ export class GameEngine {
         );
       }
       item.method = "carryForward";
-      item.remaining = 0;
+      // Leave the ledger untouched so the same outstanding debt is rebuilt
+      // from the live balance when the next round enters Settlement.
       this.advanceSettlement();
     } else if (method === "card") {
       item.method = "card";
