@@ -58,7 +58,7 @@ export function Hand({ gameState, isMyTurn, onPlay }: HandProps) {
       {/* One row per suit; cards wrap so every card stays fully visible. */}
       <div className="w-full bg-black/15 rounded-xl p-2 flex flex-col gap-2">
         {groups.map(({ suit, cards }) => (
-          <div key={suit} className="flex flex-wrap items-center gap-2 py-1 px-1">
+          <div key={suit} className="flex flex-wrap items-center justify-center gap-2 py-1 px-1">
             {cards.map((card) => {
               const legal = isLikelyLegal(card, hand, leadSuit);
               const shadowed = !canPlay || !legal;
